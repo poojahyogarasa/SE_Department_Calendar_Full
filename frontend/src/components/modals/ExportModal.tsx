@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, FileText, Table, Mail } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -19,10 +19,10 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
   if (!isOpen) return null;
 
   const formatOptions = [
-    { value: 'pdf', label: 'Export as PDF', icon: FileText },
-    { value: 'excel', label: 'Export as Excel', icon: Table },
-    { value: 'outlook', label: 'Export to Outlook', icon: Mail },
-  ] as const;
+    { value: 'pdf' as const,     label: 'Export as PDF' },
+    { value: 'excel' as const,   label: 'Export as Excel' },
+    { value: 'outlook' as const, label: 'Export to Outlook' },
+  ];
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -31,80 +31,62 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Export Calendar</h2>
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Export Calendar</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Select options and date range for your export.</p>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <p className="text-gray-500 mb-6">Select options and date range for your export.</p>
-
+        <div className="p-6 space-y-6">
           {/* Export Format */}
-          <div className="mb-6">
-            <label className="input-label">Export as:</label>
+          <div>
+            <label className="input-label mb-2">Export as:</label>
             <div className="space-y-2">
-              {formatOptions.map((option) => {
-                const Icon = option.icon;
-                return (
-                  <label
-                    key={option.value}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      exportFormat === option.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="exportFormat"
-                      value={option.value}
-                      checked={exportFormat === option.value}
-                      onChange={(e) => setExportFormat(e.target.value as any)}
-                      className="w-4 h-4 text-primary focus:ring-primary"
-                    />
-                    <Icon className="w-5 h-5 text-gray-600" />
-                    <span className="text-gray-700">{option.label}</span>
-                  </label>
-                );
-              })}
+              {formatOptions.map((option) => (
+                <label key={option.value} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    value={option.value}
+                    checked={exportFormat === option.value}
+                    onChange={() => setExportFormat(option.value)}
+                    className="w-4 h-4 text-primary focus:ring-primary accent-primary"
+                  />
+                  <span className="text-sm text-gray-700">{option.label}</span>
+                </label>
+              ))}
             </div>
           </div>
 
           {/* Date Range */}
-          <div className="mb-6">
-            <label className="input-label">Date Range:</label>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="input-field"
-                />
-              </div>
+          <div>
+            <label className="input-label mb-2">Date Range:</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="input-field flex-1"
+              />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="input-field flex-1"
+              />
             </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
-          <button onClick={onClose} className="btn-secondary">
-            Cancel
-          </button>
-          <button onClick={handleExport} className="btn-primary">
-            Export
-          </button>
+          <button onClick={onClose} className="btn-secondary">Cancel</button>
+          <button onClick={handleExport} className="btn-primary">Export</button>
         </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ export default function NotificationsPage() {
       description: 'Your final grade for Operating Systems has been posted. View details in the academic portal.',
       time: '5 minutes ago',
       read: false,
-      type: 'success'
+      type: 'success',
     },
     {
       id: '2',
@@ -26,7 +26,7 @@ export default function NotificationsPage() {
       description: 'Important security updates for academic software suite are now available. Please install at your earliest convenience.',
       time: '1 hour ago',
       read: false,
-      type: 'info'
+      type: 'info',
     },
     {
       id: '3',
@@ -34,7 +34,7 @@ export default function NotificationsPage() {
       description: 'The university will be closed on September 2nd for Labour Day. Classes will resume on September 3rd.',
       time: 'Yesterday',
       read: true,
-      type: 'info'
+      type: 'info',
     },
     {
       id: '4',
@@ -42,8 +42,8 @@ export default function NotificationsPage() {
       description: 'A new grant opportunity in Quantum Computing is now open for applications. Deadline: Oct 15.',
       time: '2 days ago',
       read: true,
-      type: 'info'
-    }
+      type: 'info',
+    },
   ]);
 
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -53,12 +53,8 @@ export default function NotificationsPage() {
     return true;
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
   const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    ));
+    setNotifications(notifications.map(n => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllAsRead = () => {
@@ -68,12 +64,7 @@ export default function NotificationsPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-        {unreadCount > 0 && (
-          <span className="badge-primary">{unreadCount} unread</span>
-        )}
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-5">Notifications</h1>
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 mb-6">
@@ -97,24 +88,20 @@ export default function NotificationsPage() {
         >
           Unread
         </button>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="ml-auto px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            Mark all as read
-          </button>
-        )}
+        <button
+          onClick={markAllAsRead}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+        >
+          Mark as read
+        </button>
       </div>
 
       {/* Notifications List */}
       {filteredNotifications.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BellOff className="w-10 h-10 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Notifications Found</h3>
-          <p className="text-gray-500">
+        <div className="text-center py-20">
+          <BellOff className="w-14 h-14 mx-auto mb-4 text-gray-400" />
+          <h3 className="text-base font-semibold text-gray-800 mb-1">No Notifications Found</h3>
+          <p className="text-sm text-gray-500">
             It looks like your inbox is empty. Check back later for updates or adjust your filter settings.
           </p>
         </div>
@@ -131,12 +118,12 @@ export default function NotificationsPage() {
               onClick={() => markAsRead(notification.id)}
             >
               <div className="flex items-start gap-4">
-                {/* Unread Indicator */}
-                <div className="pt-1">
+                {/* Unread indicator */}
+                <div className="pt-1.5">
                   {!notification.read ? (
                     <span className="w-2.5 h-2.5 bg-primary rounded-full block" />
                   ) : (
-                    <span className="w-2.5 h-2.5 bg-transparent rounded-full block" />
+                    <span className="w-2.5 h-2.5 block" />
                   )}
                 </div>
 
@@ -146,18 +133,15 @@ export default function NotificationsPage() {
                     <h3 className={`font-semibold ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
                       {notification.title}
                     </h3>
-                    <span className="text-xs text-gray-500">{notification.time}</span>
+                    <span className="text-xs text-gray-500 ml-4 flex-shrink-0">{notification.time}</span>
                   </div>
                   <p className="text-sm text-gray-600">{notification.description}</p>
                 </div>
 
-                {/* Mark as Read */}
+                {/* Mark as read */}
                 {!notification.read && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      markAsRead(notification.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
                     className="p-2 hover:bg-white rounded-lg transition-colors"
                     title="Mark as read"
                   >

@@ -12,6 +12,11 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import PasswordSuccessPage from './pages/auth/PasswordSuccessPage';
 import VerificationErrorPage from './pages/auth/VerificationErrorPage';
 
+// Event Pages
+import AddEventPage from './pages/events/AddEventPage';
+import EditEventPage from './pages/events/EditEventPage';
+import EventDetailsPage from './pages/events/EventDetailsPage';
+
 // Main Pages
 import { DashboardPage } from './pages/dashboard';
 import { CalendarPage } from './pages/calendar';
@@ -116,6 +121,17 @@ function App() {
           <RoleRoute requireApprover>
             <Layout><ApprovalsPage /></Layout>
           </RoleRoute>
+        } />
+
+        {/* ── Event Pages (standalone, no sidebar) ────────────────────── */}
+        <Route path="/add-event" element={
+          <PrivateRoute><AddEventPage /></PrivateRoute>
+        } />
+        <Route path="/edit-event/:id" element={
+          <PrivateRoute><EditEventPage /></PrivateRoute>
+        } />
+        <Route path="/event/:id" element={
+          <PrivateRoute><EventDetailsPage /></PrivateRoute>
         } />
 
         {/* ── Settings & Profile ───────────────────────────────────────── */}

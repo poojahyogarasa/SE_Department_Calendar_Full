@@ -41,9 +41,9 @@ export default function CancelEventModal({
             <X className="w-5 h-5 text-gray-500" />
           </button>
 
-          {/* Warning Icon */}
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
+          {/* Warning Icon — standalone, no circle */}
+          <div className="flex justify-center mb-4">
+            <AlertTriangle className="w-12 h-12 text-red-500" strokeWidth={1.5} />
           </div>
 
           <h2 className="text-xl font-bold text-gray-900 mb-2">

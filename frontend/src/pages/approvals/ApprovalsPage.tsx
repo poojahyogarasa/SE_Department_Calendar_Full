@@ -223,42 +223,36 @@ export default function ApprovalsPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                <Mail className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Pending Approvals</p>
-                <p className="text-3xl font-bold text-gray-900">{pendingEvents.length}</p>
-                <p className="text-sm text-gray-500">Events awaiting decision</p>
-              </div>
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mb-3">
+              <Mail className="w-5 h-5 text-primary" />
             </div>
+            <p className="text-sm text-gray-500">Total Pending Approvals</p>
+            <p className="text-4xl font-bold text-gray-900 my-1">{pendingEvents.length}</p>
+            <p className="text-sm text-gray-400">Events awaiting your decision</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Approved Events</p>
-                <p className="text-3xl font-bold text-gray-900">{approvedEvents.length}</p>
-                <p className="text-sm text-gray-500">Total approved</p>
-              </div>
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center mb-3">
+              <Calendar className="w-5 h-5 text-emerald-600" />
             </div>
+            <p className="text-sm text-gray-500">Events Today</p>
+            <p className="text-4xl font-bold text-gray-900 my-1">
+              {events.filter(e => {
+                const d = new Date(e.start);
+                const t = new Date();
+                return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+              }).length}
+            </p>
+            <p className="text-sm text-gray-400">Scheduled for today</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Approval Rate</p>
-                <p className="text-3xl font-bold text-gray-900">{approvalRate}%</p>
-                <p className="text-sm text-gray-500">Of all events</p>
-              </div>
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-3">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
             </div>
+            <p className="text-sm text-gray-500">Approval Rate (Monthly)</p>
+            <p className="text-4xl font-bold text-gray-900 my-1">{approvalRate}%</p>
+            <p className="text-sm text-gray-400">Compared to last month</p>
           </div>
         </div>
 
@@ -282,8 +276,8 @@ export default function ApprovalsPage() {
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Event Title</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Date & Time</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Requested By</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Location</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                   {activeView === 'rejected' && (
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Rejection Reason</th>
@@ -303,13 +297,13 @@ export default function ApprovalsPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
-                      {format(new Date(event.start), 'MMM d, yyyy h:mm a')}
+                      {format(new Date(event.start), 'yyyy-MM-dd hh:mm aa')}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-600">
+                      {event.createdBy || '—'}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {getCategoryLabel(event.category)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {event.location || '—'}
                     </td>
                     <td className="px-4 py-4">
                       {event.status === 'PENDING' && (

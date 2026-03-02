@@ -8,7 +8,8 @@ import {
   Trash2,
   LayoutDashboard,
   Check,
-  X
+  X,
+  Settings,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -22,8 +23,6 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>(() => getStoredTasks(userId));
   const [activeList, setActiveList] = useState<TaskList>('my-day');
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDueDate, setNewTaskDueDate] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
   const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
 
   // Editing state
@@ -43,21 +42,21 @@ export default function TasksPage() {
   }, [userId]);
 
   const listActiveClasses: Record<TaskList, string> = {
-    'my-day': 'bg-blue-500 text-white',
-    'important': 'bg-red-500 text-white',
-    'planned': 'bg-emerald-500 text-white',
-    'tasks': 'bg-primary text-white',
+    'my-day':    'bg-primary text-white',
+    'important': 'bg-primary text-white',
+    'planned':   'bg-primary text-white',
+    'tasks':     'bg-primary text-white',
   };
 
   const lists: { id: TaskList; label: string; icon: typeof CheckSquare }[] = [
-    { id: 'my-day', label: 'My Day', icon: LayoutDashboard },
+    { id: 'my-day',    label: 'My Day',    icon: LayoutDashboard },
     { id: 'important', label: 'Important', icon: Flame },
-    { id: 'planned', label: 'Planned', icon: Calendar },
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+    { id: 'planned',   label: 'Planned',   icon: Calendar },
+    { id: 'tasks',     label: 'Tasks',     icon: CheckSquare },
   ];
 
   const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
+    setTasks(tasks.map(t => (t.id === taskId ? { ...t, completed: !t.completed } : t)));
   };
 
   const deleteTask = (taskId: string) => {
@@ -66,22 +65,17 @@ export default function TasksPage() {
 
   const addTask = () => {
     if (!newTaskTitle.trim()) return;
-
     const newTask: Task = {
       id: `task-${Date.now()}`,
       userId,
       title: newTaskTitle.trim(),
       completed: false,
-      dueDate: newTaskDueDate ? new Date(newTaskDueDate) : undefined,
-      priority: newTaskPriority,
+      priority: 'medium',
       list: activeList,
       createdAt: new Date(),
     };
-
     setTasks([...tasks, newTask]);
     setNewTaskTitle('');
-    setNewTaskDueDate('');
-    setNewTaskPriority('medium');
   };
 
   const startEdit = (task: Task) => {
@@ -95,23 +89,16 @@ export default function TasksPage() {
     if (!editTitle.trim()) return;
     setTasks(tasks.map(t =>
       t.id === taskId
-        ? {
-            ...t,
-            title: editTitle.trim(),
-            dueDate: editDueDate ? new Date(editDueDate) : undefined,
-            priority: editPriority,
-          }
+        ? { ...t, title: editTitle.trim(), dueDate: editDueDate ? new Date(editDueDate) : undefined, priority: editPriority }
         : t
     ));
     setEditingId(null);
   };
 
-  const cancelEdit = () => {
-    setEditingId(null);
-  };
+  const cancelEdit = () => { setEditingId(null); };
 
   const filteredTasks = tasks
-    .filter(t => activeList === 'tasks' ? true : t.list === activeList)
+    .filter(t => (activeList === 'tasks' ? true : t.list === activeList))
     .filter(t => {
       if (filter === 'completed') return t.completed;
       if (filter === 'pending') return !t.completed;
@@ -123,22 +110,21 @@ export default function TasksPage() {
     return isPast(new Date(date)) && !isToday(new Date(date));
   };
 
-  const getPriorityColor = (priority?: TaskPriority) => {
-    if (priority === 'high') return 'bg-red-100 text-red-600';
-    if (priority === 'medium') return 'bg-yellow-100 text-yellow-600';
-    return 'bg-gray-100 text-gray-500';
-  };
+  const filterTabs: { key: 'all' | 'completed' | 'pending'; label: string }[] = [
+    { key: 'all',       label: 'All' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'pending',   label: 'Pending' },
+  ];
 
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      {/* Sidebar */}
-      <div className="w-60 bg-white border-r border-gray-200 p-4 flex-shrink-0">
-        <nav className="space-y-1">
+      {/* Left Sidebar */}
+      <div className="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        <nav className="flex-1 p-3 space-y-1">
           {lists.map((list) => {
             const Icon = list.icon;
             const isActive = activeList === list.id;
             const count = tasks.filter(t => t.list === list.id && !t.completed).length;
-
             return (
               <button
                 key={list.id}
@@ -150,9 +136,7 @@ export default function TasksPage() {
                 <Icon className="w-5 h-5" />
                 <span className="flex-1 font-medium">{list.label}</span>
                 {count > 0 && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    isActive ? 'bg-white/20' : 'bg-gray-100'
-                  }`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
                     {count}
                   </span>
                 )}
@@ -160,202 +144,149 @@ export default function TasksPage() {
             );
           })}
         </nav>
+
+        {/* Settings at bottom */}
+        <div className="border-t border-gray-200 p-3">
+          <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
+            <Settings className="w-5 h-5" />
+            <span className="font-medium">Settings</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <CheckSquare className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-primary">My Tasks</h1>
-              <p className="text-sm text-gray-500">{user?.name}</p>
-            </div>
-          </div>
-        </div>
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">My Tasks</h1>
 
-        {/* Add Task */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Add New Task</h3>
-          <div className="flex gap-3 mb-3">
+          {/* Add Task Input */}
+          <div className="flex gap-3">
             <input
               type="text"
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addTask()}
-              placeholder="Task title..."
-              className="input-field flex-1"
+              placeholder="Add a new task..."
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
-            <button onClick={addTask} className="btn-primary">
+            <button
+              onClick={addTask}
+              className="btn-primary flex items-center gap-2 px-4"
+            >
               <Plus className="w-4 h-4" />
-              Add
+              Add Task
             </button>
-          </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-xs text-gray-500 mb-1 block">Due Date (optional)</label>
-              <input
-                type="date"
-                value={newTaskDueDate}
-                onChange={(e) => setNewTaskDueDate(e.target.value)}
-                className="input-field"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-gray-500 mb-1 block">Priority</label>
-              <select
-                value={newTaskPriority}
-                onChange={(e) => setNewTaskPriority(e.target.value as TaskPriority)}
-                className="input-field"
-              >
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">
-          {(['all', 'completed', 'pending'] as const).map((f) => (
+        {/* Filter Tabs (underline style) */}
+        <div className="flex border-b border-gray-200 px-6">
+          {filterTabs.map((tab) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                filter === f ? 'bg-primary text-white' : 'text-gray-600 hover:text-gray-900'
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                filter === tab.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {tab.label}
             </button>
           ))}
         </div>
 
         {/* Task List */}
-        <div className="space-y-2">
-          {filteredTasks.map((task) => (
-            <div
-              key={task.id}
-              className={`p-4 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-all ${
-                task.completed ? 'bg-gray-50' : ''
-              }`}
-            >
-              {editingId === task.id ? (
-                /* Inline edit form */
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEdit(task.id);
-                      if (e.key === 'Escape') cancelEdit();
-                    }}
-                    className="input-field w-full"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
+        <div className="flex-1 overflow-auto p-6">
+          <div className="space-y-1">
+            {filteredTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center gap-3 py-3 px-2 border-b border-gray-100 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                {editingId === task.id ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit(task.id);
+                        if (e.key === 'Escape') cancelEdit();
+                      }}
+                      className="input-field flex-1 text-sm"
+                      autoFocus
+                    />
                     <input
                       type="date"
                       value={editDueDate}
                       onChange={(e) => setEditDueDate(e.target.value)}
-                      className="input-field flex-1 text-sm"
+                      className="input-field w-36 text-sm"
                     />
                     <select
                       value={editPriority}
                       onChange={(e) => setEditPriority(e.target.value as TaskPriority)}
-                      className="input-field flex-1 text-sm"
+                      className="input-field w-28 text-sm"
                     >
                       <option value="high">High</option>
                       <option value="medium">Medium</option>
                       <option value="low">Low</option>
                     </select>
-                    <button
-                      onClick={() => saveEdit(task.id)}
-                      className="p-2 bg-primary text-white rounded-lg hover:bg-primary-600"
-                    >
+                    <button onClick={() => saveEdit(task.id)} className="p-1.5 bg-primary text-white rounded-lg">
                       <Check className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                    >
-                      <X className="w-4 h-4" />
+                    <button onClick={cancelEdit} className="p-1.5 bg-gray-100 rounded-lg">
+                      <X className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
-                </div>
-              ) : (
-                /* Normal task row */
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleTask(task.id)}
-                    className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                      task.completed
-                        ? 'bg-primary border-primary'
-                        : 'border-gray-300 hover:border-primary'
-                    }`}
-                  >
-                    {task.completed && (
-                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
+                ) : (
+                  <>
+                    {/* Checkbox */}
+                    <button
+                      onClick={() => toggleTask(task.id)}
+                      className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                        task.completed ? 'bg-primary border-primary' : 'border-gray-300 hover:border-primary'
+                      }`}
+                    >
+                      {task.completed && (
+                        <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
 
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${task.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                    {/* Title */}
+                    <p className={`flex-1 text-sm ${task.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
                       {task.title}
                     </p>
-                  </div>
 
-                  {/* Priority badge */}
-                  {task.priority && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                  )}
+                    {/* Overdue badge */}
+                    {task.dueDate && isOverdue(task.dueDate as Date) && !task.completed && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-600 flex-shrink-0">
+                        Overdue: {format(new Date(task.dueDate), 'yyyy-MM-dd')}
+                      </span>
+                    )}
 
-                  {/* Due Date */}
-                  {task.dueDate && (
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      isOverdue(task.dueDate as Date)
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {isOverdue(task.dueDate as Date) ? 'Overdue: ' : ''}
-                      {format(new Date(task.dueDate), 'MMM d, yyyy')}
-                    </span>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => startEdit(task)}
-                      className="p-1.5 hover:bg-gray-100 rounded"
-                    >
+                    {/* Actions */}
+                    <button onClick={() => startEdit(task)} className="p-1.5 hover:bg-gray-100 rounded transition-colors">
                       <Pencil className="w-4 h-4 text-gray-400 hover:text-primary" />
                     </button>
-                    <button
-                      onClick={() => deleteTask(task.id)}
-                      className="p-1.5 hover:bg-red-50 rounded"
-                    >
+                    <button onClick={() => deleteTask(task.id)} className="p-1.5 hover:bg-red-50 rounded transition-colors">
                       <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
                     </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+                  </>
+                )}
+              </div>
+            ))}
 
-          {filteredTasks.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <CheckSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No tasks found</p>
-            </div>
-          )}
+            {filteredTasks.length === 0 && (
+              <div className="text-center py-16 text-gray-500">
+                <CheckSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-sm">No tasks found</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
