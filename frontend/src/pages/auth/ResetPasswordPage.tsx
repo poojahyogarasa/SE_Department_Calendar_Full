@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import axios from 'axios';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email || '';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -12,13 +15,20 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Redirect if no email
+  useEffect(() => {
+    if (!email) {
+      navigate('/forgot-password');
+    }
+  }, [email, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     // Validation
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
       return;
     }
 
@@ -27,46 +37,47 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // Check for complexity
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-    if (!hasLetter || !hasNumber || !hasSymbol) {
-      setError('Password must include letters, numbers, and symbols');
-      return;
-    }
-
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await axios.post('http://localhost:5000/api/auth/reset-password', {
+        email,
+        newPassword: password
+      });
 
-    setIsLoading(false);
-    navigate('/password-success');
+      setIsLoading(false);
+      navigate('/password-success');
+
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(
+        err.response?.data?.message || 'Failed to reset password'
+      );
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg p-8">
-          {/* Header */}
+
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Set a New Password</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Set a New Password
+            </h1>
             <p className="text-gray-500">
-              Please enter your new password below. It should be at least 8 characters long and include a mix of letters, numbers, and symbols.
+              Please enter your new password below.
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+
             <div>
               <label className="input-label">New Password</label>
               <div className="input-group">
@@ -74,7 +85,6 @@ export default function ResetPasswordPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your new password"
                   className="input-field pr-10"
                   required
                 />
@@ -95,7 +105,6 @@ export default function ResetPasswordPage() {
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your new password"
                   className="input-field pr-10"
                   required
                 />
@@ -114,26 +123,10 @@ export default function ResetPasswordPage() {
               disabled={isLoading}
               className="btn-primary w-full btn-lg"
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Updating...
-                </span>
-              ) : (
-                'Submit'
-              )}
+              {isLoading ? 'Updating...' : 'Submit'}
             </button>
-          </form>
-        </div>
 
-        {/* Footer Links */}
-        <div className="mt-8 flex justify-center gap-6 text-sm text-gray-500">
-          <a href="/privacy" className="hover:text-gray-700">Privacy Policy</a>
-          <a href="/terms" className="hover:text-gray-700">Terms of Service</a>
-          <a href="/consent" className="hover:text-gray-700">Consent Preferences</a>
+          </form>
         </div>
       </div>
     </div>

@@ -1,8 +1,6 @@
 const nodemailer = require("nodemailer");
 
-exports.sendResetEmail = async (to, resetLink) => {
-
-  
+exports.sendResetEmail = async (to, otp) => {
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -15,14 +13,24 @@ exports.sendResetEmail = async (to, resetLink) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to,
-    subject: "Password Reset Request",
+    subject: "Password Reset Verification Code",
     html: `
-      <h3>Password Reset</h3>
-      <p>Click below to reset your password:</p>
-      <a href="${resetLink}">${resetLink}</a>
-      <p>This link expires in 15 minutes.</p>
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Password Reset Verification</h2>
+        <p>You requested to reset your password.</p>
+        <p>Your 4-digit verification code is:</p>
+        <h1 style="letter-spacing: 5px; color: #2563eb;">${otp}</h1>
+        <p>This code will expire in <strong>5 minutes</strong>.</p>
+        <p>If you did not request this, please ignore this email.</p>
+      </div>
     `
   };
 
-  return transporter.sendMail(mailOptions);
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("OTP email sent successfully to:", to);
+  } catch (error) {
+    console.error("Email sending failed:", error);
+    throw error;
+  }
 };

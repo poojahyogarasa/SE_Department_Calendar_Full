@@ -1,73 +1,65 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const { sendResetEmail } = require('../services/emailService');
 
 
 // =======================
-// 🔐 SIGNUP (Activation or Self-Registration for Students)
+// 🔐 ACTIVATE ACCOUNT (Controlled Registration)
 // =======================
-exports.signup = async (req, res) => {
-  const { email, first_name, last_name, password } = req.body;
+exports.activateAccount = async (req, res) => {
+  const { email, password } = req.body;
 
-  if (!email || !first_name || !last_name || !password) {
-    return res.status(400).json({ message: 'All fields are required' });
+  if (!email || !password) {
+    return res.status(400).json({
+      message: 'Email and password are required'
+    });
   }
 
   db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
     if (err) return res.status(500).json({ message: 'Database error' });
 
+    // ❌ Not pre-registered
+    if (results.length === 0) {
+      return res.status(403).json({
+        message: 'You are not authorized. Contact admin.'
+      });
+    }
+
+    const user = results[0];
+
+    // ❌ Already activated
+    if (user.is_active === 1) {
+      return res.status(400).json({
+        message: 'Account already activated. Please login.'
+      });
+    }
+
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // No existing record — create a new STUDENT account
-      if (results.length === 0) {
-        db.query(
-          `INSERT INTO users (first_name, last_name, email, password, role, department, is_active)
-           VALUES (?, ?, ?, ?, 'STUDENT', 'Computer Engineering', 1)`,
-          [first_name, last_name, email, hashedPassword],
-          (insertErr) => {
-            if (insertErr)
-              return res.status(500).json({ message: 'Error creating account' });
-
-            return res.status(201).json({
-              message: 'Account created successfully'
-            });
-          }
-        );
-        return;
-      }
-
-      const user = results[0];
-
-      if (user.password !== null) {
-        return res.status(400).json({
-          message: 'Account already activated. Please login.'
-        });
-      }
-
-      // Pre-registered account — activate it
       db.query(
-        `UPDATE users
-         SET first_name = ?, last_name = ?, password = ?, is_active = 1
-         WHERE email = ?`,
-        [first_name, last_name, hashedPassword, email],
+        'UPDATE users SET password = ?, is_active = 1 WHERE email = ?',
+        [hashedPassword, email],
         (updateErr) => {
           if (updateErr)
-            return res.status(500).json({ message: 'Error updating user' });
+            return res.status(500).json({
+              message: 'Error activating account'
+            });
 
           return res.status(200).json({
             message: 'Account activated successfully'
           });
         }
       );
+
     } catch (error) {
-      return res.status(500).json({ message: 'Password hashing failed' });
+      return res.status(500).json({
+        message: 'Password hashing failed'
+      });
     }
   });
 };
-
 
 
 // =======================
@@ -78,7 +70,7 @@ exports.login = (req, res) => {
 
   if (!email || !password) {
     return res.status(400).json({
-      message: 'Email and password are required'
+      message: 'Email and password required'
     });
   }
 
@@ -93,9 +85,10 @@ exports.login = (req, res) => {
 
     const user = results[0];
 
-    if (!user.is_active) {
+    // ❌ Not activated
+    if (user.is_active !== 1) {
       return res.status(403).json({
-        message: 'Account not activated. Please signup first.'
+        message: 'Account not activated. Please activate your account first.'
       });
     }
 
@@ -109,11 +102,7 @@ exports.login = (req, res) => {
       }
 
       const token = jwt.sign(
-        {
-          id: user.id,
-          email: user.email,
-          role: user.role
-        },
+        { id: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: '2h' }
       );
@@ -124,14 +113,14 @@ exports.login = (req, res) => {
         user: {
           id: user.id,
           email: user.email,
+          role: user.role,
           first_name: user.first_name,
           last_name: user.last_name,
-          role: user.role,
           department: user.department
         }
       });
 
-    } catch (error) {
+    } catch {
       return res.status(500).json({
         message: 'Authentication failed'
       });
@@ -140,55 +129,51 @@ exports.login = (req, res) => {
 };
 
 
-
 // =======================
-// 🔐 FORGOT PASSWORD (EMAIL ENABLED)
+// 🔐 FORGOT PASSWORD
 // =======================
 exports.forgotPassword = (req, res) => {
   const { email } = req.body;
 
   if (!email) {
-    return res.status(400).json({ message: 'Email is required' });
+    return res.status(400).json({
+      message: 'Email is required'
+    });
   }
 
   db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
     if (err) return res.status(500).json({ message: 'Database error' });
 
-    // Do not reveal whether user exists
     if (results.length === 0) {
       return res.status(200).json({
-        message: 'If this email exists, a password reset link has been sent.'
+        message: 'If this email exists, a verification code has been sent.'
       });
     }
 
     const user = results[0];
 
-
-    const token = crypto.randomBytes(32).toString('hex');
-
-
-    const expiry = new Date(Date.now() + 15 * 60 * 1000);
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
     db.query(
       'INSERT INTO password_reset_tokens (user_id, token, expiry) VALUES (?, ?, ?)',
-      [user.id, token, expiry],
+      [user.id, otp, expiry],
       async (insertErr) => {
         if (insertErr)
-          return res.status(500).json({ message: 'Error generating reset token' });
-
-        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-
-        try {
-          await sendResetEmail(email, resetLink);
-
-          return res.status(200).json({
-            message: 'If this email exists, a password reset link has been sent.'
+          return res.status(500).json({
+            message: 'Error generating OTP'
           });
 
-        } catch (emailError) {
-          console.error("Email sending failed:", emailError);
+        try {
+          await sendResetEmail(email, otp);
+
+          return res.status(200).json({
+            message: 'Verification code sent successfully'
+          });
+
+        } catch {
           return res.status(500).json({
-            message: 'Failed to send reset email'
+            message: 'Failed to send verification code'
           });
         }
       }
@@ -197,62 +182,99 @@ exports.forgotPassword = (req, res) => {
 };
 
 
+// =======================
+// 🔐 VERIFY OTP
+// =======================
+exports.verifyOtp = (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({
+      message: 'Email and OTP required'
+    });
+  }
+
+  db.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length === 0)
+      return res.status(400).json({ message: 'Invalid request' });
+
+    const user = results[0];
+
+    db.query(
+      `SELECT * FROM password_reset_tokens 
+       WHERE user_id = ? AND token = ? 
+       ORDER BY id DESC LIMIT 1`,
+      [user.id, otp],
+      (tokenErr, tokenResults) => {
+
+        if (tokenErr)
+          return res.status(500).json({ message: 'Database error' });
+
+        if (tokenResults.length === 0)
+          return res.status(400).json({ message: 'Invalid OTP' });
+
+        const resetToken = tokenResults[0];
+
+        if (new Date(resetToken.expiry) < new Date())
+          return res.status(400).json({ message: 'OTP expired' });
+
+        return res.status(200).json({
+          message: 'OTP verified successfully'
+        });
+      }
+    );
+  });
+};
+
 
 // =======================
 // 🔐 RESET PASSWORD
 // =======================
 exports.resetPassword = async (req, res) => {
-  const { token, newPassword } = req.body;
+  const { email, newPassword } = req.body;
 
-  if (!token || !newPassword) {
+  if (!email || !newPassword) {
     return res.status(400).json({
-      message: 'Token and new password are required'
+      message: 'Email and new password required'
     });
   }
 
-  db.query(
-    'SELECT * FROM password_reset_tokens WHERE token = ?',
-    [token],
-    async (err, results) => {
-      if (err) return res.status(500).json({ message: 'Database error' });
+  db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length === 0)
+      return res.status(400).json({ message: 'Invalid request' });
 
-      if (results.length === 0) {
-        return res.status(400).json({ message: 'Invalid or expired token' });
-      }
+    const user = results[0];
 
-      const resetToken = results[0];
+    try {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      if (new Date(resetToken.expiry) < new Date()) {
-        return res.status(400).json({ message: 'Invalid or expired token' });
-      }
+      db.query(
+        'UPDATE users SET password = ? WHERE id = ?',
+        [hashedPassword, user.id],
+        (updateErr) => {
 
-      try {
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        db.query(
-          'UPDATE users SET password = ? WHERE id = ?',
-          [hashedPassword, resetToken.user_id],
-          (updateErr) => {
-            if (updateErr)
-              return res.status(500).json({ message: 'Error updating password' });
-
-            // Delete used token
-            db.query(
-              'DELETE FROM password_reset_tokens WHERE id = ?',
-              [resetToken.id]
-            );
-
-            return res.status(200).json({
-              message: 'Password successfully reset'
+          if (updateErr)
+            return res.status(500).json({
+              message: 'Error updating password'
             });
-          }
-        );
 
-      } catch (error) {
-        return res.status(500).json({
-          message: 'Password reset failed'
-        });
-      }
+          db.query(
+            'DELETE FROM password_reset_tokens WHERE user_id = ?',
+            [user.id]
+          );
+
+          return res.status(200).json({
+            message: 'Password reset successful'
+          });
+        }
+      );
+
+    } catch {
+      return res.status(500).json({
+        message: 'Password reset failed'
+      });
     }
-  );
+  });
 };

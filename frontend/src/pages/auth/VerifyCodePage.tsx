@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 
 export default function VerifyCodePage() {
   const navigate = useNavigate();
@@ -11,6 +12,13 @@ export default function VerifyCodePage() {
   const [error, setError] = useState('');
   const [timeLeft, setTimeLeft] = useState(59);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Redirect if no email
+  useEffect(() => {
+    if (!email) {
+      navigate('/forgot-password');
+    }
+  }, [email, navigate]);
 
   // Countdown timer
   useEffect(() => {
@@ -27,7 +35,6 @@ export default function VerifyCodePage() {
     newCode[index] = value;
     setCode(newCode);
 
-    // Auto-focus next input
     if (value && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -47,7 +54,6 @@ export default function VerifyCodePage() {
       if (i < 4) newCode[i] = char;
     });
     setCode(newCode);
-    inputRefs.current[Math.min(pastedData.length, 3)]?.focus();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,23 +68,36 @@ export default function VerifyCodePage() {
     setError('');
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await axios.post('http://localhost:5000/api/auth/verify-otp', {
+        email,
+        otp: fullCode
+      });
 
-    setIsLoading(false);
+      setIsLoading(false);
+      navigate('/reset-password', { state: { email } });
 
-    // Token-based reset is handled via the link emailed by the backend.
-    navigate('/reset-password', { state: { email, code: fullCode } });
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err.response?.data?.message || 'Invalid or expired code');
+    }
   };
 
   const handleResendCode = async () => {
     if (timeLeft > 0) return;
 
-    // Simulate resend
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setTimeLeft(59);
-    setCode(['', '', '', '']);
-    inputRefs.current[0]?.focus();
+    try {
+      await axios.post('http://localhost:5000/api/auth/forgot-password', {
+        email
+      });
+
+      setTimeLeft(59);
+      setCode(['', '', '', '']);
+      inputRefs.current[0]?.focus();
+
+    } catch (err: any) {
+      setError('Failed to resend code');
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -91,22 +110,22 @@ export default function VerifyCodePage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg p-8">
-          {/* Header */}
+
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Enter the verification code</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Enter the verification code
+            </h1>
             <p className="text-gray-500">
-              We sent a 4-digit code to your email for password recovery.
+              We sent a 4-digit code to your email.
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
             </div>
           )}
 
-          {/* Code Input */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="flex justify-center gap-4">
               {code.map((digit, index) => (
@@ -117,25 +136,28 @@ export default function VerifyCodePage() {
                   inputMode="numeric"
                   maxLength={1}
                   value={digit}
-                  onChange={(e) => handleChange(index, e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) =>
+                    handleChange(index, e.target.value.replace(/\D/g, ''))
+                  }
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
-                  className="w-14 h-14 text-center text-2xl font-semibold border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-14 h-14 text-center text-2xl font-semibold border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               ))}
             </div>
 
-            {/* Timer and Resend */}
             <div className="flex items-center justify-center gap-4 text-sm">
               <span className="text-gray-500">
-                Code expires in: <span className="font-medium text-gray-700">{formatTime(timeLeft)}</span>
+                Code expires in: <span className="font-medium">{formatTime(timeLeft)}</span>
               </span>
               <button
                 type="button"
                 onClick={handleResendCode}
                 disabled={timeLeft > 0}
                 className={`font-medium ${
-                  timeLeft > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-primary hover:text-primary-600'
+                  timeLeft > 0
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : 'text-primary hover:text-primary-600'
                 }`}
               >
                 Resend code
@@ -147,26 +169,9 @@ export default function VerifyCodePage() {
               disabled={isLoading}
               className="btn-primary w-full btn-lg"
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Verifying...
-                </span>
-              ) : (
-                'Verify'
-              )}
+              {isLoading ? 'Verifying...' : 'Verify'}
             </button>
           </form>
-        </div>
-
-        {/* Footer Links */}
-        <div className="mt-8 flex justify-center gap-6 text-sm text-gray-500">
-          <a href="/privacy" className="hover:text-gray-700">Privacy Policy</a>
-          <a href="/terms" className="hover:text-gray-700">Terms of Service</a>
-          <a href="/consent" className="hover:text-gray-700">Consent Preferences</a>
         </div>
       </div>
     </div>

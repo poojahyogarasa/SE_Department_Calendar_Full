@@ -6,27 +6,19 @@ const { authLimiter } = require('../middlewares/rateLimiter');
 const { body } = require('express-validator');
 const { validate } = require('../middlewares/validationMiddleware');
 
+
 // ===============================
 // 🔐 Authentication Routes
 // ===============================
 
+
 // ===============================
-// 🔹 Signup
+// 🔹 Activate Account (Controlled Registration)
 // ===============================
 router.post(
-  '/signup',
+  '/activate',
   authLimiter,
   [
-    body('first_name')
-      .trim()
-      .notEmpty()
-      .withMessage('First name is required'),
-
-    body('last_name')
-      .trim()
-      .notEmpty()
-      .withMessage('Last name is required'),
-
     body('email')
       .isEmail()
       .withMessage('Valid email is required'),
@@ -36,8 +28,9 @@ router.post(
       .withMessage('Password must be at least 6 characters long')
   ],
   validate,
-  authController.signup
+  authController.activateAccount
 );
+
 
 // ===============================
 // 🔹 Login
@@ -58,8 +51,9 @@ router.post(
   authController.login
 );
 
+
 // ===============================
-// 🔹 Forgot Password
+// 🔹 Forgot Password (Send OTP)
 // ===============================
 router.post(
   '/forgot-password',
@@ -73,6 +67,27 @@ router.post(
   authController.forgotPassword
 );
 
+
+// ===============================
+// 🔹 Verify OTP
+// ===============================
+router.post(
+  '/verify-otp',
+  authLimiter,
+  [
+    body('email')
+      .isEmail()
+      .withMessage('Valid email is required'),
+
+    body('otp')
+      .isLength({ min: 4, max: 4 })
+      .withMessage('OTP must be 4 digits')
+  ],
+  validate,
+  authController.verifyOtp
+);
+
+
 // ===============================
 // 🔹 Reset Password
 // ===============================
@@ -80,9 +95,9 @@ router.post(
   '/reset-password',
   authLimiter,
   [
-    body('token')
-      .notEmpty()
-      .withMessage('Reset token is required'),
+    body('email')
+      .isEmail()
+      .withMessage('Valid email is required'),
 
     body('newPassword')
       .isLength({ min: 6 })
@@ -91,5 +106,6 @@ router.post(
   validate,
   authController.resetPassword
 );
+
 
 module.exports = router;

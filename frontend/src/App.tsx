@@ -4,15 +4,13 @@ import { canApproveEvents, isStaffOrAdmin } from './utils/permissions';
 import type { UserRole } from './types';
 
 // Auth Pages
-import {
-  LoginPage,
-  RegisterPage,
-  ForgotPasswordPage,
-  VerifyCodePage,
-  ResetPasswordPage,
-  PasswordSuccessPage,
-  VerificationErrorPage
-} from './pages/auth';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import VerifyCodePage from './pages/auth/VerifyCodePage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import PasswordSuccessPage from './pages/auth/PasswordSuccessPage';
+import VerificationErrorPage from './pages/auth/VerificationErrorPage';
 
 // Main Pages
 import { DashboardPage } from './pages/dashboard';
