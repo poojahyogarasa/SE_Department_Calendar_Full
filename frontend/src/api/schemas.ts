@@ -39,7 +39,7 @@ export const BackendUserSchema = z.object({
   email: z.string().email(),
   first_name: z.string(),
   last_name: z.string(),
-  role: z.enum(['ADMIN', 'HOD', 'LECTURER', 'STUDENT', 'TO', 'INSTRUCTOR', 'TECHNICAL_OFFICER', 'HEAD_OF_DEPARTMENT']),
+  role: z.enum(['ADMIN', 'HOD', 'LECTURER', 'STUDENT', 'TO', 'INSTRUCTOR', 'TECHNICAL_OFFICER', 'HOD']),
   department: z.string().optional().nullable(),
 });
 

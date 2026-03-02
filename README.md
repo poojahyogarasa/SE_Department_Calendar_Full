@@ -49,7 +49,7 @@ SE-Department-Academic-Calendar/
 | `LECTURER` | Create and manage lecture events |
 | `INSTRUCTOR` | Create and manage lab/practical events |
 | `TECHNICAL_OFFICER` | Manage technical resources and bookings |
-| `HEAD_OF_DEPARTMENT` | Approve/reject events, full calendar access |
+| `HOD` | Approve/reject events, full calendar access |
 | `ADMIN` | Full system access, user management |
 
 ---

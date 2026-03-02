@@ -1,5 +1,6 @@
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useEventStore } from '../../stores/useEventStore';
+import { canApproveEvents } from '../../utils/permissions';
 import { format, isToday, isThisWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
 import {
@@ -15,39 +16,40 @@ export default function DashboardPage() {
   const { events, calendars } = useEventStore();
 
   // Get today's events
-  const todayEvents = events.filter(event => {
-    const eventDate = new Date(event.start);
-    return isToday(eventDate);
-  }).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+  const todayEvents = events
+    .filter(event => isToday(new Date(event.start)))
+    .sort(
+      (a, b) =>
+        new Date(a.start).getTime() - new Date(b.start).getTime()
+    );
 
   // Get upcoming events this week
-  const upcomingEvents = events.filter(event => {
-    const eventDate = new Date(event.start);
-    return isThisWeek(eventDate) && !isToday(eventDate);
-  }).slice(0, 5);
+  const upcomingEvents = events
+    .filter(event => {
+      const eventDate = new Date(event.start);
+      return isThisWeek(eventDate) && !isToday(eventDate);
+    })
+    .slice(0, 5);
 
-  // Mock pending approvals (for staff/admin)
+  // Mock pending approvals (HOD/Admin only)
   const pendingApprovals = [
     {
       id: '1',
       title: 'Student Thesis Defense',
       requester: 'Dr. Emily Watson',
-      sla: 'Due in 2 days',
-      type: 'Academic'
+      sla: 'Due in 2 days'
     },
     {
       id: '2',
       title: 'Lab Equipment Purchase',
       requester: 'Prof. David Lee',
-      sla: 'Due in 5 days',
-      type: 'Resource'
+      sla: 'Due in 5 days'
     },
     {
       id: '3',
       title: 'Course Enrollment Override',
       requester: 'Alice Smith (STU001)',
-      sla: 'Due in 1 day',
-      type: 'Enrollment'
+      sla: 'Due in 1 day'
     }
   ];
 
@@ -56,21 +58,24 @@ export default function DashboardPage() {
     {
       id: '1',
       title: 'New Grade Posted: COMP301',
-      description: 'Your final grade for Operating Systems has been posted.',
+      description:
+        'Your final grade for Operating Systems has been posted.',
       time: '5 minutes ago',
       unread: true
     },
     {
       id: '2',
       title: 'Software Update Available',
-      description: 'Important security updates for academic software suite.',
+      description:
+        'Important security updates for academic software suite.',
       time: '1 hour ago',
       unread: true
     },
     {
       id: '3',
       title: 'Upcoming Holiday: Labour Day',
-      description: 'The university will be closed on September 2nd.',
+      description:
+        'The university will be closed on September 2nd.',
       time: 'Yesterday',
       unread: false
     }
@@ -82,30 +87,34 @@ export default function DashboardPage() {
   };
 
   const getEventCategory = (category: string) => {
-    const categories: Record<string, { label: string; color: string }> = {
+    const categories: Record<
+      string,
+      { label: string; color: string }
+    > = {
       LECTURE: { label: 'Lecture', color: 'bg-blue-100 text-blue-700' },
       LAB: { label: 'Lab', color: 'bg-emerald-100 text-emerald-700' },
       EXAM: { label: 'Exam', color: 'bg-red-100 text-red-700' },
       SEMINAR: { label: 'Seminar', color: 'bg-purple-100 text-purple-700' },
       MEETING: { label: 'Meeting', color: 'bg-orange-100 text-orange-700' },
-      OTHER: { label: 'Other', color: 'bg-gray-100 text-gray-700' },
+      OTHER: { label: 'Other', color: 'bg-gray-100 text-gray-700' }
     };
+
     return categories[category] || categories.OTHER;
   };
 
-  const nonStudentRoles = ['STAFF', 'LECTURER', 'INSTRUCTOR', 'TECHNICAL_OFFICER', 'HEAD_OF_DEPARTMENT', 'ADMIN'];
-  const isStaffOrAdmin = user ? nonStudentRoles.includes(user.role) : false;
-
   return (
     <div className="p-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Dashboard
+          </h1>
           <p className="text-gray-500 mt-1">
             {format(new Date(), 'EEEE, dd MMMM yyyy')}
           </p>
         </div>
+
         <div className="flex items-center gap-3">
           <button className="btn-outline">
             <Filter className="w-4 h-4" />
@@ -122,14 +131,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Grid */}
+      {/* Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Today's Schedule */}
         <div className="lg:col-span-1">
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Today's Schedule</h2>
-              <Link to="/calendar" className="text-sm text-primary hover:text-primary-600">
+              <h2 className="font-semibold text-gray-900">
+                Today's Schedule
+              </h2>
+              <Link
+                to="/calendar"
+                className="text-sm text-primary hover:text-primary-600"
+              >
                 View all
               </Link>
             </div>
@@ -141,39 +155,61 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {todayEvents.map((event) => (
+                {todayEvents.map(event => (
                   <div
                     key={event.id}
-                    className="p-3 rounded-lg border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
+                    className="p-3 rounded-lg border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div
-                        className="w-1 h-full min-h-[60px] rounded-full"
-                        style={{ backgroundColor: getCalendarColor(event.calendarId) }}
+                        className="w-1 min-h-[60px] rounded-full"
+                        style={{
+                          backgroundColor: getCalendarColor(
+                            event.calendarId
+                          )
+                        }}
                       />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-medium text-gray-900 truncate">{event.title}</h3>
-                          <span className="status-scheduled text-xs">Scheduled</span>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900 truncate">
+                          {event.title}
+                        </h3>
+
+                        <div className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5" />
+                          {format(
+                            new Date(event.start),
+                            'h:mm a'
+                          )}{' '}
+                          -{' '}
+                          {format(
+                            new Date(event.end),
+                            'h:mm a'
+                          )}
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {format(new Date(event.start), 'h:mm a')} - {format(new Date(event.end), 'h:mm a')}
-                          </span>
-                        </div>
+
                         {event.location && (
-                          <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
+                          <div className="text-sm text-gray-500 mt-1 flex items-center gap-2">
                             <MapPin className="w-3.5 h-3.5" />
                             {event.location}
                           </div>
                         )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className={`badge ${getEventCategory(event.category).color}`}>
-                            {getEventCategory(event.category).label}
+
+                        <div className="mt-2 flex gap-2">
+                          <span
+                            className={`badge ${
+                              getEventCategory(event.category)
+                                .color
+                            }`}
+                          >
+                            {
+                              getEventCategory(event.category)
+                                .label
+                            }
                           </span>
                           {event.courseCode && (
-                            <span className="badge-gray">{event.courseCode}</span>
+                            <span className="badge-gray">
+                              {event.courseCode}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -187,31 +223,50 @@ export default function DashboardPage() {
 
         {/* Middle Column */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Pending Approvals - Only for Staff/Admin */}
-          {isStaffOrAdmin && (
+          {/* Pending Approvals - ONLY HOD / ADMIN */}
+          {canApproveEvents(user) && (
             <div className="card p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-gray-900">Pending Approvals</h2>
-                <Link to="/approvals" className="text-sm text-primary hover:text-primary-600">
+                <h2 className="font-semibold text-gray-900">
+                  Pending Approvals
+                </h2>
+                <Link
+                  to="/approvals"
+                  className="text-sm text-primary hover:text-primary-600"
+                >
                   Open
                 </Link>
               </div>
 
               <div className="space-y-3">
-                {pendingApprovals.map((approval) => (
+                {pendingApprovals.map(approval => (
                   <div
                     key={approval.id}
-                    className="p-3 rounded-lg border border-gray-200 hover:shadow-sm transition-all"
+                    className="p-3 rounded-lg border border-gray-200"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900 text-sm">{approval.title}</h3>
-                      <span className="status-pending">Pending</span>
+                    <div className="flex justify-between mb-2">
+                      <h3 className="font-medium text-gray-900 text-sm">
+                        {approval.title}
+                      </h3>
+                      <span className="status-pending">
+                        Pending
+                      </span>
                     </div>
-                    <p className="text-sm text-gray-500">Requester: {approval.requester}</p>
-                    <p className="text-sm text-gray-500">SLA: {approval.sla}</p>
+
+                    <p className="text-sm text-gray-500">
+                      Requester: {approval.requester}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      SLA: {approval.sla}
+                    </p>
+
                     <div className="flex gap-2 mt-3">
-                      <button className="btn-success btn-sm flex-1">Approve</button>
-                      <button className="btn-outline btn-sm flex-1">Reject</button>
+                      <button className="btn-success btn-sm flex-1">
+                        Approve
+                      </button>
+                      <button className="btn-outline btn-sm flex-1">
+                        Reject
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -221,32 +276,36 @@ export default function DashboardPage() {
 
           {/* Upcoming Events */}
           <div className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Upcoming This Week</h2>
-              <Link to="/calendar" className="text-sm text-primary hover:text-primary-600">
-                View
-              </Link>
-            </div>
+            <h2 className="font-semibold text-gray-900 mb-4">
+              Upcoming This Week
+            </h2>
 
             {upcomingEvents.length === 0 ? (
-              <p className="text-gray-500 text-sm">No upcoming events this week</p>
+              <p className="text-gray-500 text-sm">
+                No upcoming events this week
+              </p>
             ) : (
               <div className="space-y-3">
-                {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-center gap-3">
+                {upcomingEvents.map(event => (
+                  <div key={event.id} className="flex gap-3">
                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex flex-col items-center justify-center">
-                      <span className="text-xs text-primary font-medium">
+                      <span className="text-xs font-medium text-primary">
                         {format(new Date(event.start), 'dd')}
                       </span>
                       <span className="text-xs text-primary">
                         {format(new Date(event.start), 'MMM')}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-gray-900 truncate">{event.title}</h4>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900">
+                        {event.title}
+                      </h4>
                       <p className="text-xs text-gray-500">
-                        {format(new Date(event.start), 'h:mm a')}
-                        {event.location && ` • ${event.location}`}
+                        {format(
+                          new Date(event.start),
+                          'h:mm a'
+                        )}
                       </p>
                     </div>
                   </div>
@@ -256,36 +315,32 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Right Column - Notifications */}
+        {/* Notifications */}
         <div className="lg:col-span-1">
           <div className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Notifications</h2>
-              <Link to="/notifications" className="text-sm text-primary hover:text-primary-600">
-                Latest
-              </Link>
-            </div>
+            <h2 className="font-semibold text-gray-900 mb-4">
+              Notifications
+            </h2>
 
             <div className="space-y-3">
-              {notifications.map((notification) => (
+              {notifications.map(notification => (
                 <div
                   key={notification.id}
-                  className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                  className={`p-3 rounded-lg border ${
                     notification.unread
                       ? 'border-primary/30 bg-primary/5'
-                      : 'border-gray-200 hover:bg-gray-50'
+                      : 'border-gray-200'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    {notification.unread && (
-                      <span className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 text-sm">{notification.title}</h3>
-                      <p className="text-sm text-gray-500 mt-0.5">{notification.description}</p>
-                      <p className="text-xs text-gray-400 mt-2">{notification.time}</p>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-medium text-gray-900">
+                    {notification.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {notification.description}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {notification.time}
+                  </p>
                 </div>
               ))}
             </div>

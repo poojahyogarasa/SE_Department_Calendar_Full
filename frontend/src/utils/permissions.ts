@@ -1,8 +1,15 @@
 import type { User, Event, Calendar, EventPermissions } from '../types';
 
 /** Roles that have staff-level or higher access */
-const STAFF_LIKE_ROLES = ['LECTURER', 'INSTRUCTOR', 'TECHNICAL_OFFICER', 'HEAD_OF_DEPARTMENT', 'ADMIN'] as const;
-const ELEVATED_ROLES = ['HEAD_OF_DEPARTMENT', 'ADMIN'] as const;
+const STAFF_LIKE_ROLES = [
+  'LECTURER',
+  'INSTRUCTOR',
+  'TECHNICAL_OFFICER',
+  'HOD',
+  'ADMIN'
+] as const;
+
+const ELEVATED_ROLES = ['HOD', 'ADMIN'] as const;
 
 /**
  * Determines what permissions a user has for a given event
@@ -16,74 +23,86 @@ export const getEventPermissions = (
     return { canView: false, canEdit: false, canDelete: false, viewMode: 'HIDDEN' };
   }
 
-  // Admin and Head of Department have full access to everything
-  if (user.role === 'ADMIN' || user.role === 'HEAD_OF_DEPARTMENT') {
+  // Admin and HOD have full access to everything
+  if (user.role === 'ADMIN' || user.role === 'HOD') {
     return { canView: true, canEdit: true, canDelete: true, viewMode: 'FULL' };
   }
 
-  // Check if user is a manager of the calendar
   const isManager = calendar.managers.includes(user.id);
   const isCreator = event.createdBy === user.id;
 
-  // Lecturer permissions (same as previous STAFF)
   if (user.role === 'LECTURER') {
     const canModify = isManager || isCreator;
 
     switch (event.visibility) {
       case 'PRIVATE':
-        if (isCreator) return { canView: true, canEdit: true, canDelete: true, viewMode: 'FULL' };
+        if (isCreator)
+          return { canView: true, canEdit: true, canDelete: true, viewMode: 'FULL' };
         return { canView: false, canEdit: false, canDelete: false, viewMode: 'HIDDEN' };
+
       case 'STAFF_ONLY':
-        return { canView: true, canEdit: canModify, canDelete: canModify, viewMode: 'FULL' };
       case 'BUSY_ONLY':
       case 'PUBLIC':
       default:
-        return { canView: true, canEdit: canModify, canDelete: canModify, viewMode: 'FULL' };
+        return {
+          canView: true,
+          canEdit: canModify,
+          canDelete: canModify,
+          viewMode: 'FULL'
+        };
     }
   }
 
-  // Instructor permissions (focus on LAB sessions; can manage their own events)
   if (user.role === 'INSTRUCTOR') {
     const canModify = isCreator || isManager;
 
     switch (event.visibility) {
       case 'PRIVATE':
-        if (isCreator) return { canView: true, canEdit: true, canDelete: true, viewMode: 'FULL' };
+        if (isCreator)
+          return { canView: true, canEdit: true, canDelete: true, viewMode: 'FULL' };
         return { canView: false, canEdit: false, canDelete: false, viewMode: 'HIDDEN' };
+
       case 'STAFF_ONLY':
-        return { canView: true, canEdit: canModify, canDelete: canModify, viewMode: 'FULL' };
       case 'BUSY_ONLY':
       case 'PUBLIC':
       default:
-        return { canView: true, canEdit: canModify, canDelete: canModify, viewMode: 'FULL' };
+        return {
+          canView: true,
+          canEdit: canModify,
+          canDelete: canModify,
+          viewMode: 'FULL'
+        };
     }
   }
 
-  // Technical Officer permissions (read-heavy; can view all lab bookings)
   if (user.role === 'TECHNICAL_OFFICER') {
     switch (event.visibility) {
       case 'PRIVATE':
         return { canView: false, canEdit: false, canDelete: false, viewMode: 'HIDDEN' };
+
       case 'STAFF_ONLY':
-        // TOs can see staff-only events (they are internal staff)
         return { canView: true, canEdit: false, canDelete: false, viewMode: 'FULL' };
+
       case 'BUSY_ONLY':
         return { canView: true, canEdit: false, canDelete: false, viewMode: 'BUSY' };
+
       case 'PUBLIC':
       default:
         return { canView: true, canEdit: false, canDelete: false, viewMode: 'FULL' };
     }
   }
 
-  // Student permissions
   if (user.role === 'STUDENT') {
     switch (event.visibility) {
       case 'PRIVATE':
         return { canView: false, canEdit: false, canDelete: false, viewMode: 'HIDDEN' };
+
       case 'STAFF_ONLY':
         return { canView: true, canEdit: false, canDelete: false, viewMode: 'STAFF_EVENT' };
+
       case 'BUSY_ONLY':
         return { canView: true, canEdit: false, canDelete: false, viewMode: 'BUSY' };
+
       case 'PUBLIC':
       default:
         return { canView: true, canEdit: false, canDelete: false, viewMode: 'FULL' };
@@ -98,40 +117,46 @@ export const getEventPermissions = (
  */
 export const canCreateEvent = (user: User | null, calendar: Calendar): boolean => {
   if (!user) return false;
-  if (user.role === 'ADMIN' || user.role === 'HEAD_OF_DEPARTMENT') return true;
+
+  if (user.role === 'ADMIN' || user.role === 'HOD') return true;
+
   if (
     (user.role === 'LECTURER' || user.role === 'INSTRUCTOR') &&
     calendar.managers.includes(user.id)
   ) return true;
+
   return false;
 };
 
 /**
- * Checks if user can manage a calendar (edit/delete)
+ * Checks if user can manage a calendar
  */
 export const canManageCalendar = (user: User | null, calendar: Calendar): boolean => {
   if (!user) return false;
-  if (user.role === 'ADMIN' || user.role === 'HEAD_OF_DEPARTMENT') return true;
+
+  if (user.role === 'ADMIN' || user.role === 'HOD') return true;
+
   if (
     (user.role === 'LECTURER' || user.role === 'INSTRUCTOR') &&
     calendar.managers.includes(user.id)
   ) return true;
+
   return false;
 };
 
 /**
- * Checks if user can approve/reject events (HOD and Admin only)
+ * Checks if user can approve/reject events
  */
 export const canApproveEvents = (user: User | null): boolean => {
   if (!user) return false;
-  return user.role === 'ADMIN' || user.role === 'HEAD_OF_DEPARTMENT';
+  return user.role === 'ADMIN' || user.role === 'HOD';
 };
 
 /**
  * Checks if user can view admin pages
  */
 export const isAdmin = (user: User | null): boolean => {
-  return user?.role === 'ADMIN' || user?.role === 'HEAD_OF_DEPARTMENT';
+  return user?.role === 'ADMIN' || user?.role === 'HOD';
 };
 
 /**
@@ -143,7 +168,7 @@ export const isStaffOrAdmin = (user: User | null): boolean => {
 };
 
 /**
- * Checks if user has elevated (admin/HOD) access
+ * Checks if user has elevated access
  */
 export const isElevated = (user: User | null): boolean => {
   if (!user) return false;
@@ -151,26 +176,26 @@ export const isElevated = (user: User | null): boolean => {
 };
 
 /**
- * Filters calendars based on user role and visibility
+ * Filters calendars based on user role
  */
-export const getVisibleCalendars = (calendars: Calendar[], user: User | null): Calendar[] => {
+export const getVisibleCalendars = (
+  calendars: Calendar[],
+  user: User | null
+): Calendar[] => {
   if (!user) return calendars.filter(cal => cal.visibility === 'PUBLIC');
 
-  if (user.role === 'ADMIN' || user.role === 'HEAD_OF_DEPARTMENT') return calendars;
+  if (user.role === 'ADMIN' || user.role === 'HOD') return calendars;
 
   if (isStaffOrAdmin(user)) {
-    // All staff-like roles can see public and staff-only calendars
-    return calendars.filter(cal =>
-      cal.visibility === 'PUBLIC' || cal.visibility === 'STAFF_ONLY'
+    return calendars.filter(
+      cal => cal.visibility === 'PUBLIC' || cal.visibility === 'STAFF_ONLY'
     );
   }
-
-  // Students only see public calendars
   return calendars.filter(cal => cal.visibility === 'PUBLIC');
 };
 
 /**
- * Gets the display text for an event based on permissions
+ * Gets display text for event
  */
 export const getEventDisplayText = (
   event: Event,
@@ -179,10 +204,13 @@ export const getEventDisplayText = (
   switch (viewMode) {
     case 'HIDDEN':
       return { title: '', description: '', location: '' };
+
     case 'BUSY':
       return { title: 'Busy', description: '', location: '' };
+
     case 'STAFF_EVENT':
       return { title: 'Staff Event', description: '', location: '' };
+
     case 'FULL':
     default:
       return {

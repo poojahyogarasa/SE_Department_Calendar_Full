@@ -61,7 +61,7 @@ export default function EventDetailsModal({
     event.studentCount !== undefined &&
     (user?.role === 'TECHNICAL_OFFICER' ||
       user?.role === 'ADMIN' ||
-      user?.role === 'HEAD_OF_DEPARTMENT' ||
+      user?.role === 'HOD' ||
       user?.role === 'INSTRUCTOR');
 
   return (

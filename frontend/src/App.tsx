@@ -44,7 +44,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
  * Role-protected route.
  * allowedRoles: explicit list — OR —
  * requireStaff: any staff-like role — OR —
- * requireApprover: only ADMIN / HEAD_OF_DEPARTMENT
+ * requireApprover: only ADMIN / HOD
  */
 interface RoleRouteProps {
   children: React.ReactNode;
@@ -111,7 +111,7 @@ function App() {
           </PrivateRoute>
         } />
 
-        {/* ── Role-restricted: Approvals — ADMIN / HEAD_OF_DEPARTMENT only */}
+        {/* ── Role-restricted: Approvals — ADMIN / HOD only */}
         <Route path="/approvals" element={
           <RoleRoute requireApprover>
             <Layout><ApprovalsPage /></Layout>

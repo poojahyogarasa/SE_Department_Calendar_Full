@@ -43,7 +43,7 @@ export default function Header({ onNewEvent }: HeaderProps) {
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       ADMIN: 'Admin',
-      HEAD_OF_DEPARTMENT: 'Head of Dept',
+      HOD: 'Head of Dept',
       LECTURER: 'Lecturer',
       INSTRUCTOR: 'Instructor',
       TECHNICAL_OFFICER: 'Tech Officer',
@@ -57,7 +57,7 @@ export default function Header({ onNewEvent }: HeaderProps) {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'ADMIN':               return 'bg-red-100 text-red-700 border border-red-200';
-      case 'HEAD_OF_DEPARTMENT':  return 'bg-purple-100 text-purple-700 border border-purple-200';
+      case 'HOD':  return 'bg-purple-100 text-purple-700 border border-purple-200';
       case 'LECTURER':            return 'bg-blue-100 text-blue-700 border border-blue-200';
       case 'INSTRUCTOR':          return 'bg-cyan-100 text-cyan-700 border border-cyan-200';
       case 'TECHNICAL_OFFICER':   return 'bg-orange-100 text-orange-700 border border-orange-200';

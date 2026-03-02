@@ -4,7 +4,7 @@ export type UserRole =
   | 'LECTURER'
   | 'INSTRUCTOR'
   | 'TECHNICAL_OFFICER'
-  | 'HEAD_OF_DEPARTMENT'
+  | 'HOD'
   | 'ADMIN';
 
 export interface User {

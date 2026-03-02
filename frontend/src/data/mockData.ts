@@ -58,7 +58,7 @@ export const mockUsers: User[] = [
     id: 'user-7',
     name: 'Prof. Sanjay Patel',
     email: 'hod@uoj.lk',
-    role: 'HEAD_OF_DEPARTMENT',
+    role: 'HOD',
     department: 'Computer Engineering',
   },
   {
