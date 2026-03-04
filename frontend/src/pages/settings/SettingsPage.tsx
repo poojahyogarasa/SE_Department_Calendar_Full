@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Palette,
@@ -19,12 +19,24 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 type SettingsSection = 'display' | 'notifications' | 'account' | 'security' | 'calendar' | 'event-defaults' | 'user-roles' | 'integrations' | 'help';
 
 export default function SettingsPage() {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<SettingsSection>('display');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // BUG_010: Compute real user initials
+  const userInitials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
+
+  // BUG_013–016: Restrict admin-only sections by role
+  const isAdminOrHod = user?.role === 'ADMIN' || user?.role === 'HOD';
+  const isAdminOnly = user?.role === 'ADMIN';
 
   // Display settings
   const [darkMode, setDarkMode] = useState(false);
@@ -37,10 +49,14 @@ export default function SettingsPage() {
     { id: 'notifications', label: 'Notification Preferences', icon: Bell },
     { id: 'account', label: 'Account Management', icon: User },
     { id: 'security', label: 'Security & Privacy', icon: Shield },
-    { id: 'calendar', label: 'Calendar Management', icon: Calendar },
-    { id: 'event-defaults', label: 'Event Defaults', icon: SettingsIcon },
-    { id: 'user-roles', label: 'User Roles', icon: Users },
-    { id: 'integrations', label: 'Integrations', icon: Link2 },
+    // BUG_013: Calendar Management — ADMIN / HOD only
+    ...(isAdminOrHod ? [{ id: 'calendar', label: 'Calendar Management', icon: Calendar }] : []),
+    // BUG_014: Event Defaults — ADMIN / HOD only
+    ...(isAdminOrHod ? [{ id: 'event-defaults', label: 'Event Defaults', icon: SettingsIcon }] : []),
+    // BUG_015: User Roles — ADMIN only
+    ...(isAdminOnly ? [{ id: 'user-roles', label: 'User Roles', icon: Users }] : []),
+    // BUG_016: Integrations — ADMIN / HOD only
+    ...(isAdminOrHod ? [{ id: 'integrations', label: 'Integrations', icon: Link2 }] : []),
     { id: 'help', label: 'Help & Support', icon: HelpCircle },
   ];
 
@@ -323,12 +339,18 @@ export default function SettingsPage() {
 
             {/* Right side */}
             <div className="flex items-center gap-3">
-              <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              {/* BUG_012: Bell links to notifications page */}
+              <Link to="/notifications" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <Bell className="w-5 h-5 text-gray-600" />
+              </Link>
+              {/* BUG_010 & BUG_011: Real initials + clickable avatar → profile */}
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold hover:ring-2 hover:ring-primary/30 transition-all"
+                title="View profile"
+              >
+                {userInitials}
               </button>
-              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all">
-                US
-              </div>
             </div>
           </div>
         </header>

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/useAuthStore';
 import { canApproveEvents, isStaffOrAdmin } from './utils/permissions';
 import type { UserRole } from './types';
+import { BookOpen, Mail, MessageSquare, HelpCircle } from 'lucide-react';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -140,6 +141,48 @@ function App() {
         } />
         <Route path="/profile" element={
           <PrivateRoute><ProfilePage /></PrivateRoute>
+        } />
+
+        {/* ── Help & Support ───────────────────────────────────────────── */}
+        <Route path="/help" element={
+          <PrivateRoute>
+            <Layout>
+              <div className="p-6 max-w-3xl mx-auto">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Help &amp; Support</h1>
+                <p className="text-gray-500 mb-8">Find answers or get in touch with your department administrator.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="card p-5">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                      <BookOpen className="w-5 h-5 text-primary" />
+                    </div>
+                    <h2 className="font-semibold text-gray-900 mb-1">User Guide</h2>
+                    <p className="text-sm text-gray-500">Learn how to use the SE Department Calendar system.</p>
+                  </div>
+                  <div className="card p-5">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                      <Mail className="w-5 h-5 text-primary" />
+                    </div>
+                    <h2 className="font-semibold text-gray-900 mb-1">Contact Admin</h2>
+                    <p className="text-sm text-gray-500">Reach out to your department administrator for assistance.</p>
+                  </div>
+                  <div className="card p-5">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                      <MessageSquare className="w-5 h-5 text-primary" />
+                    </div>
+                    <h2 className="font-semibold text-gray-900 mb-1">FAQs</h2>
+                    <p className="text-sm text-gray-500">Frequently asked questions about events, calendars and tasks.</p>
+                  </div>
+                  <div className="card p-5">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                      <HelpCircle className="w-5 h-5 text-primary" />
+                    </div>
+                    <h2 className="font-semibold text-gray-900 mb-1">Report an Issue</h2>
+                    <p className="text-sm text-gray-500">Found a bug? Let your administrator know.</p>
+                  </div>
+                </div>
+              </div>
+            </Layout>
+          </PrivateRoute>
         } />
 
         {/* ── Catch-all ───────────────────────────────────────────────── */}

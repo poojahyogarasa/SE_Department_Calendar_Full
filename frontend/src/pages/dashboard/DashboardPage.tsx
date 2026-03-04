@@ -4,6 +4,7 @@ import { canApproveEvents } from '../../utils/permissions';
 import { format, isToday, isThisWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Download } from 'lucide-react';
+import type { Event } from '../../types';
 
 import InstructorDashboard from '../../components/dashboard/InstructorDashboard';
 import TODashboard from '../../components/dashboard/TODashboard';
@@ -39,6 +40,30 @@ export default function DashboardPage() {
     { id: '3', title: 'Upcoming Holiday: Labour Day', description: 'The university will be closed on September 2nd.',          time: 'Yesterday',    unread: false },
   ];
 
+  // BUG_008: Export events to CSV
+  const handleExport = () => {
+    const exportEvents: Event[] = [...todayEvents, ...upcomingEvents];
+    const header = ['Title', 'Start', 'End', 'Location', 'Category', 'Status'];
+    const rows = exportEvents.map(e => [
+      e.title,
+      format(new Date(e.start), 'yyyy-MM-dd HH:mm'),
+      format(new Date(e.end), 'yyyy-MM-dd HH:mm'),
+      e.location || '',
+      e.category,
+      e.status || 'APPROVED',
+    ]);
+    const csv = [header, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `events-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getCalendarColor = (calendarId: string) =>
     calendars.find(c => c.id === calendarId)?.color || '#6366F1';
 
@@ -63,7 +88,7 @@ export default function DashboardPage() {
           <p className="text-gray-500 mt-1">{format(new Date(), 'EEEE, dd MMMM yyyy')}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="btn-outline">
+          <button className="btn-outline" onClick={handleExport}>
             <Download className="w-4 h-4" />
             Export
           </button>

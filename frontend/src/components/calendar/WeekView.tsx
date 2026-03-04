@@ -83,9 +83,12 @@ export default function WeekView({ date, events, calendars, onEventClick }: Week
                 key={hour}
                 className="h-[60px] border-b border-gray-100 text-right pr-3 text-xs text-gray-500"
               >
-                <span className="-mt-2 block">
-                  {format(new Date().setHours(hour, 0), 'h a')}
-                </span>
+                {/* BUG_017: Skip rendering 12 AM label at hour 0 to avoid clipping */}
+                {hour !== 0 && (
+                  <span className="-mt-2 block">
+                    {format(new Date().setHours(hour, 0), 'h a')}
+                  </span>
+                )}
               </div>
             ))}
           </div>

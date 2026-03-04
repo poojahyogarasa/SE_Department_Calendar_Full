@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
   Plus,
   Filter,
   HelpCircle,
-  Menu
+  Menu,
+  X
 } from 'lucide-react';
 import {
   format,
@@ -18,6 +20,7 @@ import { useCalendarStore } from '../../stores/useCalendarStore';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { getEventPermissions, getEventDisplayText, canCreateEvent } from '../../utils/permissions';
+import type { EventCategory } from '../../types';
 import MiniCalendar from '../../components/calendar/MiniCalendar';
 import DayView from '../../components/calendar/DayView';
 import WeekView from '../../components/calendar/WeekView';
@@ -26,7 +29,10 @@ import EventModal from '../../components/modals/EventModal';
 import EventDetailsModal from '../../components/modals/EventDetailsModal';
 import type { Event } from '../../types';
 
+const ALL_CATEGORIES: EventCategory[] = ['LECTURE', 'LAB', 'EXAM', 'SEMINAR', 'MEETING', 'OTHER'];
+
 export default function CalendarPage() {
+  const navigate = useNavigate();
   const { currentDate, viewType, setCurrentDate, setViewType } = useCalendarStore();
   const { events, calendars } = useEventStore();
   const { user } = useAuthStore();
@@ -35,12 +41,22 @@ export default function CalendarPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  // BUG_018: Filter panel state
+  const [showFilter, setShowFilter] = useState(false);
+  const [activeCategories, setActiveCategories] = useState<EventCategory[]>([...ALL_CATEGORIES]);
 
   // Check if the current user can create events in any calendar
   const userCanCreate = useMemo(
     () => calendars.some(cal => canCreateEvent(user, cal)),
     [user, calendars]
   );
+
+  // BUG_018: Toggle category filter
+  const toggleCategory = (cat: EventCategory) => {
+    setActiveCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
 
   /**
    * Filter & transform the raw event list through the permission layer.
@@ -67,6 +83,12 @@ export default function CalendarPage() {
       }];
     });
   }, [events, calendars, user]);
+
+  // BUG_018: Apply category filter on top of permission-filtered events
+  const filteredEvents = useMemo(
+    () => visibleEvents.filter(e => activeCategories.includes(e.category)),
+    [visibleEvents, activeCategories]
+  );
 
   const handlePrevious = () => {
     switch (viewType) {
@@ -207,27 +229,63 @@ export default function CalendarPage() {
                 </button>
               ))}
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
-              <Filter className="w-5 h-5 text-gray-600" />
+            {/* BUG_018: Filter button toggles filter panel */}
+            <button
+              onClick={() => setShowFilter(f => !f)}
+              className={`p-2 hover:bg-gray-100 rounded-lg transition-colors ${showFilter ? 'bg-primary/10 text-primary' : ''}`}
+              title="Filter events"
+            >
+              <Filter className="w-5 h-5" />
             </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
+            {/* BUG_019: Help icon navigates to help page */}
+            <button
+              onClick={() => navigate('/help')}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              title="Help & Support"
+            >
               <HelpCircle className="w-5 h-5 text-gray-600" />
             </button>
           </div>
         </div>
 
-        {/* Calendar View — permission-filtered events passed here */}
+        {/* BUG_018: Category filter panel */}
+        {showFilter && (
+          <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter by category:</span>
+            {ALL_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  activeCategories.includes(cat)
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
+                }`}
+              >
+                {cat.charAt(0) + cat.slice(1).toLowerCase()}
+              </button>
+            ))}
+            <button
+              onClick={() => setActiveCategories([...ALL_CATEGORIES])}
+              className="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-3 h-3" /> Reset
+            </button>
+          </div>
+        )}
+
+        {/* Calendar View — permission-filtered + category-filtered events passed here */}
         <div className="flex-1 overflow-auto bg-white">
           {viewType === 'DAY' && (
-            <DayView date={currentDate} events={visibleEvents} calendars={calendars} onEventClick={handleEventClick} />
+            <DayView date={currentDate} events={filteredEvents} calendars={calendars} onEventClick={handleEventClick} />
           )}
           {viewType === 'WEEK' && (
-            <WeekView date={currentDate} events={visibleEvents} calendars={calendars} onEventClick={handleEventClick} />
+            <WeekView date={currentDate} events={filteredEvents} calendars={calendars} onEventClick={handleEventClick} />
           )}
           {viewType === 'MONTH' && (
             <MonthView
               date={currentDate}
-              events={visibleEvents}
+              events={filteredEvents}
               calendars={calendars}
               onEventClick={handleEventClick}
               onDateClick={handleDateSelect}

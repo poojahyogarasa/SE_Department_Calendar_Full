@@ -10,41 +10,57 @@ interface Notification {
   type: 'info' | 'warning' | 'success' | 'error';
 }
 
+// BUG_025: Persist notification read state across page navigations
+const STORAGE_KEY = 'notifications_read_ids';
+
+const getPersistedReadIds = (): string[] => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+};
+
+const BASE_NOTIFICATIONS: Notification[] = [
+  {
+    id: '1',
+    title: 'New Grade Posted: COMP301',
+    description: 'Your final grade for Operating Systems has been posted. View details in the academic portal.',
+    time: '5 minutes ago',
+    read: false,
+    type: 'success',
+  },
+  {
+    id: '2',
+    title: 'Software Update Available',
+    description: 'Important security updates for academic software suite are now available. Please install at your earliest convenience.',
+    time: '1 hour ago',
+    read: false,
+    type: 'info',
+  },
+  {
+    id: '3',
+    title: 'Upcoming Holiday: Labour Day',
+    description: 'The university will be closed on September 2nd for Labour Day. Classes will resume on September 3rd.',
+    time: 'Yesterday',
+    read: true,
+    type: 'info',
+  },
+  {
+    id: '4',
+    title: 'New Research Grant Opportunity',
+    description: 'A new grant opportunity in Quantum Computing is now open for applications. Deadline: Oct 15.',
+    time: '2 days ago',
+    read: true,
+    type: 'info',
+  },
+];
+
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'New Grade Posted: COMP301',
-      description: 'Your final grade for Operating Systems has been posted. View details in the academic portal.',
-      time: '5 minutes ago',
-      read: false,
-      type: 'success',
-    },
-    {
-      id: '2',
-      title: 'Software Update Available',
-      description: 'Important security updates for academic software suite are now available. Please install at your earliest convenience.',
-      time: '1 hour ago',
-      read: false,
-      type: 'info',
-    },
-    {
-      id: '3',
-      title: 'Upcoming Holiday: Labour Day',
-      description: 'The university will be closed on September 2nd for Labour Day. Classes will resume on September 3rd.',
-      time: 'Yesterday',
-      read: true,
-      type: 'info',
-    },
-    {
-      id: '4',
-      title: 'New Research Grant Opportunity',
-      description: 'A new grant opportunity in Quantum Computing is now open for applications. Deadline: Oct 15.',
-      time: '2 days ago',
-      read: true,
-      type: 'info',
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+    const readIds = getPersistedReadIds();
+    return BASE_NOTIFICATIONS.map(n => ({
+      ...n,
+      read: n.read || readIds.includes(n.id),
+    }));
+  });
 
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
@@ -54,11 +70,14 @@ export default function NotificationsPage() {
   });
 
   const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => (n.id === id ? { ...n, read: true } : n)));
+    const readIds = getPersistedReadIds();
+    if (!readIds.includes(id)) localStorage.setItem(STORAGE_KEY, JSON.stringify([...readIds, id]));
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications.map(n => n.id)));
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   return (
