@@ -17,16 +17,25 @@ interface MonthViewProps {
   calendars: Calendar[];
   onEventClick: (event: Event) => void;
   onDateClick: (date: Date) => void;
+  // BUG_028 & BUG_030: settings props
+  showDescriptions?: boolean;
+  firstDayOfWeek?: 'sunday' | 'monday';
 }
 
-export default function MonthView({ date, events, calendars, onEventClick, onDateClick }: MonthViewProps) {
+export default function MonthView({ date, events, calendars, onEventClick, onDateClick, showDescriptions = false, firstDayOfWeek = 'sunday' }: MonthViewProps) {
+  // BUG_030: respect firstDayOfWeek setting
+  const weekStartsOn = firstDayOfWeek === 'monday' ? 1 : 0;
   const monthStart = startOfMonth(date);
   const monthEnd = endOfMonth(date);
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: weekStartsOn as 0 | 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: weekStartsOn as 0 | 1 });
 
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  // BUG_030: rotate weekday headers based on firstDayOfWeek
+  const allWeekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = weekStartsOn === 1
+    ? [...allWeekDays.slice(1), allWeekDays[0]]
+    : allWeekDays;
 
   const getCalendarColor = (calendarId: string) => {
     const calendar = calendars.find((c) => c.id === calendarId);
@@ -108,10 +117,14 @@ export default function MonthView({ date, events, calendars, onEventClick, onDat
                           e.stopPropagation();
                           onEventClick(event);
                         }}
-                        className="px-2 py-0.5 rounded text-xs text-white truncate cursor-pointer hover:opacity-80"
+                        className="px-2 py-0.5 rounded text-xs text-white cursor-pointer hover:opacity-80"
                         style={{ backgroundColor: getCalendarColor(event.calendarId) }}
                       >
-                        {event.title}
+                        <p className="truncate">{event.title}</p>
+                        {/* BUG_028: show description if setting is enabled */}
+                        {showDescriptions && event.description && (
+                          <p className="truncate text-white/80">{event.description}</p>
+                        )}
                       </div>
                     ))}
                     {moreCount > 0 && (

@@ -104,10 +104,17 @@ export default function Header({ onNewEvent }: HeaderProps) {
           </button>
         )}
 
-        {/* Notifications */}
+        {/* Notifications — BUG_021: dynamic unread count from localStorage */}
         <Link to="/notifications" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <Bell className="w-5 h-5 text-gray-600" />
-          <span className="notification-dot">2</span>
+          {(() => {
+            try {
+              const allIds = ['1', '2', '3', '4'];
+              const readIds: string[] = JSON.parse(localStorage.getItem('notifications_read_ids') || '[]');
+              const unread = allIds.filter(id => !readIds.includes(id)).length;
+              return unread > 0 ? <span className="notification-dot">{unread}</span> : null;
+            } catch { return null; }
+          })()}
         </Link>
 
         {/* Settings */}
@@ -121,9 +128,12 @@ export default function Header({ onNewEvent }: HeaderProps) {
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
           >
+            {/* BUG_025: show full initials to match Settings header */}
             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
               <span className="text-primary font-medium text-sm">
-                {user?.name?.charAt(0) || 'U'}
+                {user?.name
+                  ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                  : 'U'}
               </span>
             </div>
             <div className="hidden lg:block text-left">

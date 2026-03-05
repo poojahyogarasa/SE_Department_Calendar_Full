@@ -10,16 +10,17 @@ import {
   Settings as SettingsIcon,
   Users,
   Link2,
-  HelpCircle,
   Moon,
   MessageSquare,
   Clock,
   CalendarDays,
   Search,
   Menu,
-  X
+  X,
+  Mail,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 
 type SettingsSection = 'display' | 'notifications' | 'account' | 'security' | 'calendar' | 'event-defaults' | 'user-roles' | 'integrations' | 'help';
 
@@ -38,11 +39,13 @@ export default function SettingsPage() {
   const isAdminOrHod = user?.role === 'ADMIN' || user?.role === 'HOD';
   const isAdminOnly = user?.role === 'ADMIN';
 
-  // Display settings
-  const [darkMode, setDarkMode] = useState(false);
-  const [showDescriptions, setShowDescriptions] = useState(false);
-  const [use24Hour, setUse24Hour] = useState(false);
-  const [firstDayOfWeek, setFirstDayOfWeek] = useState('sunday');
+  // BUG_027-030: Display settings from persistent store
+  const {
+    darkMode, setDarkMode,
+    showDescriptions, setShowDescriptions,
+    use24Hour, setUse24Hour,
+    firstDayOfWeek, setFirstDayOfWeek,
+  } = useSettingsStore();
 
   const sections = [
     { id: 'display', label: 'Display & Appearance', icon: Palette },
@@ -57,7 +60,7 @@ export default function SettingsPage() {
     ...(isAdminOnly ? [{ id: 'user-roles', label: 'User Roles', icon: Users }] : []),
     // BUG_016: Integrations — ADMIN / HOD only
     ...(isAdminOrHod ? [{ id: 'integrations', label: 'Integrations', icon: Link2 }] : []),
-    { id: 'help', label: 'Help & Support', icon: HelpCircle },
+    // BUG_023: Removed "Help & Support" from sidebar (not in approved design)
   ];
 
   const Toggle = ({ enabled, onChange }: { enabled: boolean; onChange: (value: boolean) => void }) => (
@@ -242,12 +245,27 @@ export default function SettingsPage() {
 
       default:
         return (
-          <div className="text-center py-16 text-gray-500">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <SettingsIcon className="w-8 h-8 text-gray-400" />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Contact Admin</h3>
+            <p className="text-sm text-gray-500 mb-6">Need help? Reach out to the system administrator directly.</p>
+            {/* BUG_022: Added contact email for admin */}
+            <div className="space-y-4 max-w-xl">
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Mail className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Email Administrator</p>
+                  <a
+                    href="mailto:mmsalmanmmskk@gmail.com"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    mmsalmanmmskk@gmail.com
+                  </a>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400">Response time is typically within 1–2 business days.</p>
             </div>
-            <p className="text-lg font-medium text-gray-700 mb-1">Coming Soon</p>
-            <p className="text-sm text-gray-500">This section is under development.</p>
           </div>
         );
     }
@@ -338,15 +356,12 @@ export default function SettingsPage() {
             </div>
 
             {/* Right side */}
+            {/* BUG_026: Removed bell icon from Settings header (not in approved design) */}
             <div className="flex items-center gap-3">
-              {/* BUG_012: Bell links to notifications page */}
-              <Link to="/notifications" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="w-5 h-5 text-gray-600" />
-              </Link>
-              {/* BUG_010 & BUG_011: Real initials + clickable avatar → profile */}
+              {/* BUG_010 & BUG_011 & BUG_025: Real initials + clickable avatar → profile, style matches main Header */}
               <button
                 onClick={() => navigate('/profile')}
-                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold hover:ring-2 hover:ring-primary/30 transition-all"
+                className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-semibold hover:ring-2 hover:ring-primary/30 transition-all"
                 title="View profile"
               >
                 {userInitials}

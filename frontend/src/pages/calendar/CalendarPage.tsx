@@ -19,6 +19,7 @@ import {
 import { useCalendarStore } from '../../stores/useCalendarStore';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 import { getEventPermissions, getEventDisplayText, canCreateEvent } from '../../utils/permissions';
 import type { EventCategory } from '../../types';
 import MiniCalendar from '../../components/calendar/MiniCalendar';
@@ -36,6 +37,8 @@ export default function CalendarPage() {
   const { currentDate, viewType, setCurrentDate, setViewType } = useCalendarStore();
   const { events, calendars } = useEventStore();
   const { user } = useAuthStore();
+  // BUG_028,029,030: read display settings
+  const { showDescriptions, use24Hour, firstDayOfWeek } = useSettingsStore();
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -280,7 +283,14 @@ export default function CalendarPage() {
             <DayView date={currentDate} events={filteredEvents} calendars={calendars} onEventClick={handleEventClick} />
           )}
           {viewType === 'WEEK' && (
-            <WeekView date={currentDate} events={filteredEvents} calendars={calendars} onEventClick={handleEventClick} />
+            <WeekView
+              date={currentDate}
+              events={filteredEvents}
+              calendars={calendars}
+              onEventClick={handleEventClick}
+              use24Hour={use24Hour}
+              firstDayOfWeek={firstDayOfWeek}
+            />
           )}
           {viewType === 'MONTH' && (
             <MonthView
@@ -289,6 +299,8 @@ export default function CalendarPage() {
               calendars={calendars}
               onEventClick={handleEventClick}
               onDateClick={handleDateSelect}
+              showDescriptions={showDescriptions}
+              firstDayOfWeek={firstDayOfWeek}
             />
           )}
         </div>

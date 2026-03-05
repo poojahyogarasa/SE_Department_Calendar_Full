@@ -14,11 +14,16 @@ interface WeekViewProps {
   events: Event[];
   calendars: Calendar[];
   onEventClick: (event: Event) => void;
+  // BUG_029 & BUG_030: settings props
+  use24Hour?: boolean;
+  firstDayOfWeek?: 'sunday' | 'monday';
 }
 
-export default function WeekView({ date, events, calendars, onEventClick }: WeekViewProps) {
+export default function WeekView({ date, events, calendars, onEventClick, use24Hour = false, firstDayOfWeek = 'sunday' }: WeekViewProps) {
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const weekStart = startOfWeek(date, { weekStartsOn: 0 });
+  // BUG_030: respect firstDayOfWeek setting
+  const weekStartsOn = firstDayOfWeek === 'monday' ? 1 : 0;
+  const weekStart = startOfWeek(date, { weekStartsOn: weekStartsOn as 0 | 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const getCalendarColor = (calendarId: string) => {
@@ -84,9 +89,10 @@ export default function WeekView({ date, events, calendars, onEventClick }: Week
                 className="h-[60px] border-b border-gray-100 text-right pr-3 text-xs text-gray-500"
               >
                 {/* BUG_017: Skip rendering 12 AM label at hour 0 to avoid clipping */}
+                {/* BUG_029: use 24h format if setting is enabled */}
                 {hour !== 0 && (
                   <span className="-mt-2 block">
-                    {format(new Date().setHours(hour, 0), 'h a')}
+                    {format(new Date().setHours(hour, 0), use24Hour ? 'HH:mm' : 'h a')}
                   </span>
                 )}
               </div>
@@ -137,8 +143,9 @@ export default function WeekView({ date, events, calendars, onEventClick }: Week
                     >
                       <p className="text-white text-xs font-medium truncate">{event.title}</p>
                       {height > 40 && (
+                        {/* BUG_029: use 24h format if setting is enabled */}
                         <p className="text-white/80 text-xs">
-                          {format(new Date(event.start), 'h:mm a')}
+                          {format(new Date(event.start), use24Hour ? 'HH:mm' : 'h:mm a')}
                         </p>
                       )}
                     </div>

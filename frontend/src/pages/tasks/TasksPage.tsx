@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Check,
   X,
-  Settings,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -116,44 +115,9 @@ export default function TasksPage() {
     { key: 'pending',   label: 'Pending' },
   ];
 
+  // BUG_024: Removed unnecessary second sidebar — layout already has the main sidebar
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      {/* Left Sidebar */}
-      <div className="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
-        <nav className="flex-1 p-3 space-y-1">
-          {lists.map((list) => {
-            const Icon = list.icon;
-            const isActive = activeList === list.id;
-            const count = tasks.filter(t => t.list === list.id && !t.completed).length;
-            return (
-              <button
-                key={list.id}
-                onClick={() => setActiveList(list.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-colors ${
-                  isActive ? listActiveClasses[list.id] : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="flex-1 font-medium">{list.label}</span>
-                {count > 0 && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Settings at bottom */}
-        <div className="border-t border-gray-200 p-3">
-          <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
-            <Settings className="w-5 h-5" />
-            <span className="font-medium">Settings</span>
-          </button>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white">
         {/* Header */}
