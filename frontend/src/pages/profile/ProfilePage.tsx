@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Settings, LogOut } from 'lucide-react';
+import { ArrowLeft, Settings, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 export default function ProfilePage() {
@@ -15,13 +15,11 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-primary" />
-            </div>
-            <span className="text-primary font-semibold">Dept Calendar</span>
-          </div>
+        <div className="px-6 py-4 flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <h1 className="text-lg font-semibold text-gray-900">My Profile</h1>
         </div>
       </div>
 
@@ -29,7 +27,8 @@ export default function ProfilePage() {
       <div className="max-w-md mx-auto mt-16 px-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center relative">
           {/* Settings Icon */}
-          <button className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg">
+          {/* BUG_036: Settings gear navigates to /settings */}
+          <button onClick={() => navigate('/settings')} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <Settings className="w-5 h-5 text-gray-500" />
           </button>
 

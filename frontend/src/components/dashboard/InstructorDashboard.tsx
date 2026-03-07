@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, Plus } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { useEventStore } from '../../stores/useEventStore';
@@ -9,11 +9,15 @@ const mockPendingApprovals = [
   { id: '2', title: 'LabA booking (weekend)',      requester: 'INS01', sla: 'Tomorrow 10:00' },
 ];
 
-const mockNotifications = [
-  { id: '1', title: 'Event Updated: CS101 Lecture',    desc: 'Location changed to Room R3.',         time: '10 min ago',  unread: true },
-  { id: '2', title: 'Approval Needed: Lab overtime',   desc: 'Please review request APR-102.',       time: '1 hr ago',    unread: true },
-  { id: '3', title: 'Reminder: CS101 Lab starts in 1 hour', desc: 'LabA, 13:00.',                   time: 'Yesterday',   unread: false },
+// BUG_032: Derive unread state from localStorage so Dashboard stays in sync with Notifications page
+const getReadIds = (): string[] => { try { return JSON.parse(localStorage.getItem('notifications_read_ids') || '[]'); } catch { return []; } };
+const BASE_NOTIFICATIONS = [
+  { id: '1', title: 'Event Updated: CS101 Lecture',    desc: 'Location changed to Room R3.',   time: '10 min ago' },
+  { id: '2', title: 'Approval Needed: Lab overtime',   desc: 'Please review request APR-102.', time: '1 hr ago'   },
+  { id: '3', title: 'Reminder: CS101 Lab starts in 1 hour', desc: 'LabA, 13:00.',             time: 'Yesterday'  },
 ];
+const readIds = getReadIds();
+const mockNotifications = BASE_NOTIFICATIONS.map(n => ({ ...n, unread: !readIds.includes(n.id) }));
 
 const demoTips = [
   'Go to Calendar → click an event',
@@ -31,6 +35,9 @@ const STATUS_COLORS: Record<string, string> = {
 export default function InstructorDashboard({ onCreateEvent }: { onCreateEvent?: () => void }) {
   const { events, calendars } = useEventStore();
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  // BUG_031: fallback to /calendar if no handler passed from parent
+  const handleCreateEvent = onCreateEvent ?? (() => navigate('/calendar'));
 
   const todayEvents = events
     .filter(e => isToday(new Date(e.start)))
@@ -70,7 +77,7 @@ export default function InstructorDashboard({ onCreateEvent }: { onCreateEvent?:
             <Calendar className="w-4 h-4" />
             Open Calendar
           </Link>
-          <button onClick={onCreateEvent} className="btn-primary flex items-center gap-2">
+          <button onClick={handleCreateEvent} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Create Event
           </button>

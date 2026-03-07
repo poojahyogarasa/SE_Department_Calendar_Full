@@ -34,11 +34,14 @@ export default function DashboardPage() {
     })
     .slice(0, 5);
 
+  // BUG_032: Sync unread state with localStorage so Dashboard matches Notifications page
+  const getReadIds = (): string[] => { try { return JSON.parse(localStorage.getItem('notifications_read_ids') || '[]'); } catch { return []; } };
+  const _readIds = getReadIds();
   const mockNotifications = [
-    { id: '1', title: 'New Grade Posted: COMP301',    description: 'Your final grade for Operating Systems has been posted.', time: '5 minutes ago', unread: true },
-    { id: '2', title: 'Software Update Available',    description: 'Important security updates for academic software suite.', time: '1 hour ago',    unread: true },
-    { id: '3', title: 'Upcoming Holiday: Labour Day', description: 'The university will be closed on September 2nd.',          time: 'Yesterday',    unread: false },
-  ];
+    { id: '1', title: 'New Grade Posted: COMP301',    description: 'Your final grade for Operating Systems has been posted.', time: '5 minutes ago' },
+    { id: '2', title: 'Software Update Available',    description: 'Important security updates for academic software suite.', time: '1 hour ago'    },
+    { id: '3', title: 'Upcoming Holiday: Labour Day', description: 'The university will be closed on September 2nd.',          time: 'Yesterday'    },
+  ].map(n => ({ ...n, unread: !_readIds.includes(n.id) }));
 
   // BUG_008: Export events to CSV
   const handleExport = () => {

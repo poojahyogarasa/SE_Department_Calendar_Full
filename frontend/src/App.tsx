@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/useAuthStore';
 import { canApproveEvents, isStaffOrAdmin } from './utils/permissions';
 import type { UserRole } from './types';
-import { BookOpen, Mail, MessageSquare, HelpCircle } from 'lucide-react';
+import { BookOpen, Mail, MessageSquare, HelpCircle, FileText, Users, MapPin, Megaphone, BarChart3 } from 'lucide-react';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -184,6 +184,36 @@ function App() {
             </Layout>
           </PrivateRoute>
         } />
+
+        {/* ── BUG_034: Staff routes (Documents, Attendance, Venues, Announcements, Reports) */}
+        {([
+          { path: '/documents',     icon: FileText,   title: 'Documents',     desc: 'Access and manage department documents.' },
+          { path: '/attendance',    icon: Users,      title: 'Attendance',    desc: 'View and record student attendance.' },
+          { path: '/venues',        icon: MapPin,     title: 'Venues',        desc: 'Manage rooms and lab bookings.' },
+          { path: '/announcements', icon: Megaphone,  title: 'Announcements', desc: 'Post and view department announcements.' },
+          { path: '/reports',       icon: BarChart3,  title: 'Reports',       desc: 'View analytics and generate reports.' },
+        ] as { path: string; icon: any; title: string; desc: string }[]).map(({ path, icon: Icon, title, desc }) => (
+          <Route key={path} path={path} element={
+            <PrivateRoute>
+              <Layout>
+                <div className="p-6 max-w-2xl mx-auto">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+                      <p className="text-sm text-gray-500">{desc}</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400">
+                    <p className="text-sm">This section is coming soon.</p>
+                  </div>
+                </div>
+              </Layout>
+            </PrivateRoute>
+          } />
+        ))}
 
         {/* ── Catch-all ───────────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/" replace />} />
