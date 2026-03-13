@@ -5,6 +5,7 @@ const authController = require('../controllers/authController');
 const { authLimiter } = require('../middlewares/rateLimiter');
 const { body } = require('express-validator');
 const { validate } = require('../middlewares/validationMiddleware');
+const { verifyToken } = require('../middlewares/authMiddleware');
 
 
 // ===============================
@@ -24,8 +25,8 @@ router.post(
       .withMessage('Valid email is required'),
 
     body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters long')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters long')
   ],
   validate,
   authController.activateAccount
@@ -100,11 +101,26 @@ router.post(
       .withMessage('Valid email is required'),
 
     body('newPassword')
-      .isLength({ min: 6 })
-      .withMessage('New password must be at least 6 characters long')
+      .isLength({ min: 8 })
+      .withMessage('New password must be at least 8 characters long')
   ],
   validate,
   authController.resetPassword
+);
+
+
+// ===============================
+// 🔹 Update Profile (H5)
+// ===============================
+router.put(
+  '/profile',
+  verifyToken,
+  [
+    body('first_name').notEmpty().withMessage('First name is required'),
+    body('last_name').notEmpty().withMessage('Last name is required'),
+  ],
+  validate,
+  authController.updateProfile
 );
 
 

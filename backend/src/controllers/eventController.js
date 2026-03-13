@@ -10,7 +10,10 @@ exports.createEvent = async (req, res) => {
     event_type,
     start_datetime,
     end_datetime,
-    location
+    location,
+    course_code,
+    course_year,
+    course_group,
   } = req.body;
 
   const created_by = req.user.id;
@@ -60,8 +63,8 @@ exports.createEvent = async (req, res) => {
       const insertResult = await new Promise((resolve, reject) => {
         db.query(
           `INSERT INTO events
-          (title, description, event_type, start_datetime, end_datetime, location, status, created_by)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          (title, description, event_type, start_datetime, end_datetime, location, course_code, course_year, course_group, status, created_by)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             title,
             description,
@@ -69,6 +72,9 @@ exports.createEvent = async (req, res) => {
             start_datetime,
             end_datetime,
             location,
+            course_code || null,
+            course_year || null,
+            course_group || null,
             userRole === "ADMIN" ? "APPROVED" : "PENDING",
             created_by
           ],
@@ -132,7 +138,7 @@ exports.createEvent = async (req, res) => {
 // =====================================
 exports.getEvents = (req, res) => {
 
-  const { start, end } = req.query;
+  const { start, end, limit, offset } = req.query;
   const role = req.user.role;
   const userId = req.user.id;
 
@@ -159,6 +165,15 @@ exports.getEvents = (req, res) => {
   }
 
   query += ` ORDER BY start_datetime ASC`;
+
+  if (limit) {
+    query += ` LIMIT ?`;
+    values.push(parseInt(limit, 10));
+    if (offset) {
+      query += ` OFFSET ?`;
+      values.push(parseInt(offset, 10));
+    }
+  }
 
   db.query(query, values, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -204,7 +219,10 @@ exports.updateEvent = async (req, res) => {
     event_type,
     start_datetime,
     end_datetime,
-    location
+    location,
+    course_code,
+    course_year,
+    course_group,
   } = req.body;
 
   try {
@@ -240,7 +258,7 @@ exports.updateEvent = async (req, res) => {
     await new Promise((resolve, reject) => {
       db.query(
         `UPDATE events
-         SET title=?, description=?, event_type=?, start_datetime=?, end_datetime=?, location=?, status=?
+         SET title=?, description=?, event_type=?, start_datetime=?, end_datetime=?, location=?, course_code=?, course_year=?, course_group=?, status=?
          WHERE event_id=?`,
         [
           title,
@@ -249,6 +267,9 @@ exports.updateEvent = async (req, res) => {
           start_datetime,
           end_datetime,
           location,
+          course_code || null,
+          course_year || null,
+          course_group || null,
           newStatus,
           eventId
         ],
