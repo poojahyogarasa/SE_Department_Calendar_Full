@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/useAuthStore';
 import { canApproveEvents, isStaffOrAdmin } from './utils/permissions';
 import type { UserRole } from './types';
-import { BookOpen, Mail, MessageSquare, HelpCircle, FileText, Users, MapPin, Megaphone, BarChart3 } from 'lucide-react';
+import { BookOpen, Mail, MessageSquare, HelpCircle, FileText, Users, MapPin, Megaphone, BarChart3, Shield, Calendar as CalendarIcon } from 'lucide-react';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -84,6 +85,7 @@ function RoleRoute({ children, allowedRoles, requireStaff, requireApprover }: Ro
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <Routes>
         {/* ── Public Auth Routes ──────────────────────────────────────── */}
@@ -215,10 +217,91 @@ function App() {
           } />
         ))}
 
+        {/* ── Admin-only routes: User Roles & Calendar Management ─────── */}
+        <Route path="/user-roles" element={
+          <RoleRoute allowedRoles={['ADMIN']}>
+            <Layout>
+              <div className="p-6 max-w-3xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">User Roles</h1>
+                    <p className="text-sm text-gray-500">Overview of role permissions in the system.</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-6 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-2 pr-4 text-gray-500 font-semibold">Role</th>
+                        <th className="text-left py-2 pr-4 text-gray-500 font-semibold">Create Events</th>
+                        <th className="text-left py-2 pr-4 text-gray-500 font-semibold">Approve Events</th>
+                        <th className="text-left py-2 text-gray-500 font-semibold">Admin Access</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[
+                        { role: 'Admin',             create: '✓',            approve: '✓', admin: '✓' },
+                        { role: 'HOD',               create: '✓',            approve: '✓', admin: '✓' },
+                        { role: 'Lecturer',          create: '✓ (pending)',   approve: '—', admin: '—' },
+                        { role: 'Instructor',        create: 'Lab only',      approve: '—', admin: '—' },
+                        { role: 'Technical Officer', create: '—',            approve: '—', admin: '—' },
+                        { role: 'Student',           create: '—',            approve: '—', admin: '—' },
+                      ].map(row => (
+                        <tr key={row.role}>
+                          <td className="py-3 pr-4 font-medium text-gray-900">{row.role}</td>
+                          <td className="py-3 pr-4 text-gray-600">{row.create}</td>
+                          <td className="py-3 pr-4 text-gray-600">{row.approve}</td>
+                          <td className="py-3 text-gray-600">{row.admin}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Layout>
+          </RoleRoute>
+        } />
+
+        <Route path="/calendar-management" element={
+          <RoleRoute allowedRoles={['ADMIN', 'HOD']}>
+            <Layout>
+              <div className="p-6 max-w-3xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <CalendarIcon className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Calendar Management</h1>
+                    <p className="text-sm text-gray-500">Manage department calendars, visibility, and access control.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: 'Public Calendar',       desc: 'Visible to all users including students.',                          badge: 'Active',   color: 'bg-emerald-100 text-emerald-700' },
+                    { title: 'Staff Calendar',        desc: 'Visible to staff and above only.',                                  badge: 'Active',   color: 'bg-emerald-100 text-emerald-700' },
+                    { title: 'Event Approval Policy', desc: 'Lecturer and Instructor events require HOD approval before going live.', badge: 'Enforced', color: 'bg-blue-100 text-blue-700' },
+                    { title: 'Lab Booking Policy',    desc: 'Only Instructors may schedule lab sessions. Conflicts are auto-detected.', badge: 'Enforced', color: 'bg-blue-100 text-blue-700' },
+                  ].map(item => (
+                    <div key={item.title} className="bg-white p-5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
+                      <h4 className="font-medium text-gray-900 mb-2">{item.title}</h4>
+                      <p className="text-sm text-gray-500 mb-3">{item.desc}</p>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${item.color}`}>{item.badge}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Layout>
+          </RoleRoute>
+        } />
+
         {/* ── Catch-all ───────────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

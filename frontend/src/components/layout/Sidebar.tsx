@@ -15,6 +15,7 @@ import {
   Shield
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useEventStore } from '../../stores/useEventStore';
 import { isAdmin as checkAdmin, isStaffOrAdmin as checkStaff, canApproveEvents } from '../../utils/permissions';
 
 interface SidebarProps {
@@ -23,9 +24,11 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false }: SidebarProps) {
   const { user } = useAuthStore();
+  const { events } = useEventStore();
   const isAdmin = checkAdmin(user);
   const isStaff = checkStaff(user);
   const canApprove = canApproveEvents(user); // Only ADMIN + HOD
+  const pendingCount = events.filter(e => e.status === 'PENDING').length;
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -37,7 +40,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
 
   const staffItems = [
     // Approvals only for HOD / Admin
-    { to: '/approvals', icon: ClipboardCheck, label: 'Approvals', badge: 5, hidden: !canApprove },
+    { to: '/approvals', icon: ClipboardCheck, label: 'Approvals', badge: pendingCount, hidden: !canApprove },
     { to: '/attendance', icon: Users, label: 'Attendance' },
     { to: '/venues', icon: MapPin, label: 'Venues' },
     { to: '/announcements', icon: Megaphone, label: 'Announcements' },
@@ -102,7 +105,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
         )}
 
         {/* Admin Section */}
-        {isAdmin && (
+        {user?.role === 'ADMIN' && (
           <>
             <div className="mt-6 mb-2 px-4">
               {!collapsed && <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</p>}

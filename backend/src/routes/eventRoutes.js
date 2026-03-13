@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { verifyToken, authorizeRoles } = require('../middlewares/authMiddleware');
 const eventController = require('../controllers/eventController');
+const { eventLimiter } = require('../middlewares/rateLimiter');
 
 const { body } = require('express-validator');
 const { validate } = require('../middlewares/validationMiddleware');
@@ -10,12 +11,12 @@ const { validate } = require('../middlewares/validationMiddleware');
 // ==============================
 // 🔹 Create Event
 // ==============================
-// ADMIN → Directly approved
-// LECTURER → Goes to HOD approval (handled in controller)
+// ADMIN/HOD → Directly approved; LECTURER/INSTRUCTOR → Goes to HOD approval
 router.post(
   '/',
   verifyToken,
-  authorizeRoles('ADMIN', 'LECTURER'),
+  authorizeRoles('ADMIN', 'HOD', 'LECTURER', 'INSTRUCTOR'),
+  eventLimiter,
   [
     body('title')
       .trim()
@@ -73,7 +74,7 @@ router.get(
 router.put(
   '/:id',
   verifyToken,
-  authorizeRoles('ADMIN', 'LECTURER'),
+  authorizeRoles('ADMIN', 'HOD', 'LECTURER', 'INSTRUCTOR'),
   [
     body('title')
       .trim()
@@ -109,11 +110,10 @@ router.put(
 // ==============================
 // 🔹 Delete Event
 // ==============================
-// Only ADMIN and LECTURER can delete
 router.delete(
   '/:id',
   verifyToken,
-  authorizeRoles('ADMIN', 'LECTURER'),
+  authorizeRoles('ADMIN', 'HOD', 'LECTURER', 'INSTRUCTOR'),
   eventController.deleteEvent
 );
 

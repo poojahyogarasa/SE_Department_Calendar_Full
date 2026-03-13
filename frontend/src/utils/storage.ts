@@ -54,14 +54,12 @@ export const initializeStorage = (): void => {
   const storedVersion = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
 
   if (storedVersion !== DATA_VERSION) {
-    // Clear old data and re-seed with latest mock data
+    // Re-seed mock data but preserve the active user session
     localStorage.setItem(STORAGE_KEYS.EVENTS, serialize(mockEvents));
     localStorage.setItem(STORAGE_KEYS.CALENDARS, serialize(mockCalendars));
     localStorage.setItem(STORAGE_KEYS.USERS, serialize(mockUsers));
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, serialize(mockAuditLogs));
     localStorage.setItem(STORAGE_KEYS.RESOURCES, serialize(mockResources));
-    // Clear session so stale role data doesn't persist
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     localStorage.setItem(STORAGE_KEYS.INITIALIZED, DATA_VERSION);
   }
 };

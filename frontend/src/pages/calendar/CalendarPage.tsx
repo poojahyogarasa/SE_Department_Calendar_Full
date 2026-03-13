@@ -35,7 +35,7 @@ const ALL_CATEGORIES: EventCategory[] = ['LECTURE', 'LAB', 'EXAM', 'SEMINAR', 'M
 export default function CalendarPage() {
   const navigate = useNavigate();
   const { currentDate, viewType, setCurrentDate, setViewType } = useCalendarStore();
-  const { events, calendars } = useEventStore();
+  const { events, calendars, deleteEvent } = useEventStore();
   const { user } = useAuthStore();
   // BUG_028,029,030: read display settings
   const { showDescriptions, use24Hour, firstDayOfWeek } = useSettingsStore();
@@ -133,16 +133,13 @@ export default function CalendarPage() {
 
     const perms = getEventPermissions(realEvent, user, calendar);
 
-    if (perms.canEdit) {
-      // Users with edit rights → open full edit modal
-      setSelectedEvent(realEvent);
-      setShowEventModal(true);
-    } else if (perms.canView && perms.viewMode === 'FULL') {
-      // Read-only users with full visibility → open details modal
+    // Always show details first (for any visible, non-masked event)
+    // Edit/delete actions are available via buttons inside EventDetailsModal
+    if (perms.canView && perms.viewMode === 'FULL') {
       setSelectedEvent(realEvent);
       setShowDetailsModal(true);
     }
-    // BUSY / STAFF_EVENT modes → no click action (masked, no details to show)
+    // BUSY / STAFF_EVENT / HIDDEN modes → no click action
   };
 
   const handleNewEvent = () => {
@@ -316,12 +313,20 @@ export default function CalendarPage() {
         />
       )}
 
-      {/* Read-only Details Modal (student / technical officer) */}
+      {/* Details Modal — always shown first on event click */}
       {showDetailsModal && selectedEvent && (
         <EventDetailsModal
           isOpen={showDetailsModal}
           onClose={() => { setShowDetailsModal(false); setSelectedEvent(null); }}
           event={selectedEvent}
+          onEdit={() => { setShowDetailsModal(false); setShowEventModal(true); }}
+          onCancel={() => {
+            if (selectedEvent) {
+              deleteEvent(selectedEvent.id);
+              setShowDetailsModal(false);
+              setSelectedEvent(null);
+            }
+          }}
         />
       )}
     </div>

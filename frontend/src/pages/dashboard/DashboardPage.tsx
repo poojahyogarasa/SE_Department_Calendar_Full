@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useEventStore } from '../../stores/useEventStore';
 import { canApproveEvents } from '../../utils/permissions';
@@ -8,10 +9,12 @@ import type { Event } from '../../types';
 
 import InstructorDashboard from '../../components/dashboard/InstructorDashboard';
 import TODashboard from '../../components/dashboard/TODashboard';
+import EventModal from '../../components/modals/EventModal';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { events, calendars } = useEventStore();
+  const [showEventModal, setShowEventModal] = useState(false);
 
   // ── Role-specific views ──────────────────────────────
   if (user?.role === 'TECHNICAL_OFFICER') {
@@ -19,7 +22,14 @@ export default function DashboardPage() {
   }
 
   if (user?.role === 'INSTRUCTOR' || user?.role === 'LECTURER') {
-    return <InstructorDashboard />;
+    return (
+      <>
+        <InstructorDashboard onCreateEvent={() => setShowEventModal(true)} />
+        {showEventModal && (
+          <EventModal isOpen={showEventModal} onClose={() => setShowEventModal(false)} />
+        )}
+      </>
+    );
   }
 
   // ── Generic dashboard (STUDENT, HOD, ADMIN) ──────────
