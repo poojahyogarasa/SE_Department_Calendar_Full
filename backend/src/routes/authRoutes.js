@@ -124,4 +124,29 @@ router.put(
 );
 
 
+// ===============================
+// 🔹 Get Users by Role(s)
+// Used by frontend to resolve user IDs for inbox notifications
+// ?roles=STUDENT,TECHNICAL_OFFICER,INSTRUCTOR,HOD  (comma-separated)
+// ===============================
+const db = require('../config/db');
+router.get('/users', verifyToken, (req, res) => {
+  const roles = req.query.roles
+    ? req.query.roles.split(',').map(r => r.trim().toUpperCase())
+    : [];
+  if (roles.length === 0) {
+    return res.json([]);
+  }
+  const placeholders = roles.map(() => '?').join(',');
+  db.query(
+    `SELECT id, CONCAT(first_name, ' ', last_name) AS name, email, role FROM users WHERE role IN (${placeholders})`,
+    roles,
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(results);
+    }
+  );
+});
+
+
 module.exports = router;

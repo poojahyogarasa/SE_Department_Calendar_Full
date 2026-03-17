@@ -6,8 +6,6 @@ import {
   BarChart3,
   FileText,
   Settings,
-  HelpCircle,
-  Shield,
   ChevronDown,
   Bell,
   X,
@@ -18,7 +16,8 @@ import { format } from 'date-fns';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { canApproveEvents } from '../../utils/permissions';
-import { hodAPI } from '../../services/api';
+import { hodAPI, usersAPI } from '../../services/api';
+import { addInboxNotification } from '../../utils/storage';
 import type { Event } from '../../types';
 
 export default function ApprovalsPage() {
@@ -53,6 +52,27 @@ export default function ApprovalsPage() {
   const handleApprove = (event: Event) => {
     updateEvent(event.id, { status: 'APPROVED', rejectionReason: undefined });
     hodAPI.approveEvent(event.id).catch(() => {});
+    // Notify the event creator
+    if (event.createdBy) {
+      addInboxNotification(event.createdBy, {
+        title: `Event Approved: ${event.title}`,
+        description: `Your event "${event.title}" scheduled on ${format(new Date(event.start), 'dd MMM yyyy')} has been approved by HOD.`,
+        time: 'Just now',
+        type: 'success',
+      });
+    }
+    // Notify students, TOs, and instructors that a new event is available
+    usersAPI.getByRoles(['STUDENT', 'TECHNICAL_OFFICER', 'INSTRUCTOR', 'LECTURER']).then(res => {
+      res.data.forEach(u => {
+        if (String(u.id) === event.createdBy) return; // creator already notified above
+        addInboxNotification(String(u.id), {
+          title: `New Event: ${event.title}`,
+          description: `"${event.title}" on ${format(new Date(event.start), 'dd MMM yyyy')} at ${format(new Date(event.start), 'HH:mm')} has been approved and added to the calendar.`,
+          time: 'Just now',
+          type: 'info',
+        });
+      });
+    }).catch(() => {});
   };
 
   const openRejectDialog = (event: Event) => {
@@ -70,6 +90,14 @@ export default function ApprovalsPage() {
       const reason = rejectionReason.trim();
       updateEvent(rejectTarget.id, { status: 'REJECTED', rejectionReason: reason });
       hodAPI.rejectEvent(rejectTarget.id, reason).catch(() => {});
+      if (rejectTarget.createdBy) {
+        addInboxNotification(rejectTarget.createdBy, {
+          title: `Event Rejected: ${rejectTarget.title}`,
+          description: `Your event "${rejectTarget.title}" was rejected by HOD. Reason: ${reason}`,
+          time: 'Just now',
+          type: 'error',
+        });
+      }
     }
     setRejectTarget(null);
     setRejectionReason('');
@@ -214,17 +242,6 @@ export default function ApprovalsPage() {
           })}
         </nav>
 
-        {/* Bottom Links */}
-        <div className="absolute bottom-4 left-4 space-y-3">
-          <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm">
-            <HelpCircle className="w-4 h-4" />
-            Help & Support
-          </button>
-          <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm">
-            <Shield className="w-4 h-4" />
-            Privacy Policy
-          </button>
-        </div>
       </div>
 
       {/* Main Content */}

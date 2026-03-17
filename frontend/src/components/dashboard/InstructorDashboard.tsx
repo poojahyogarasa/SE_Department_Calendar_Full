@@ -1,20 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, Plus, Clock, MapPin } from 'lucide-react';
+import { Calendar, Plus, Clock, MapPin, BellOff } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { getInboxNotifications } from '../../utils/storage';
 import EventDetailsModal from '../modals/EventDetailsModal';
 import EventModal from '../modals/EventModal';
 import type { Event } from '../../types';
-
-// BUG_032: Sync unread state from localStorage
-const getReadIds = (): string[] => { try { return JSON.parse(localStorage.getItem('notifications_read_ids') || '[]'); } catch { return []; } };
-const BASE_NOTIFICATIONS = [
-  { id: '1', title: 'Event Updated: CS101 Lecture',         desc: 'Location changed to Room R3.',   time: '10 min ago' },
-  { id: '2', title: 'Approval Needed: Lab overtime',        desc: 'Please review request APR-102.', time: '1 hr ago'   },
-  { id: '3', title: 'Reminder: CS101 Lab starts in 1 hour', desc: 'LabA, 13:00.',                  time: 'Yesterday'  },
-];
 
 const STATUS_COLORS: Record<string, string> = {
   SCHEDULED: 'bg-green-100 text-green-700',
@@ -37,6 +30,7 @@ export default function InstructorDashboard({ onCreateEvent }: { onCreateEvent?:
   const handleCreateEvent = onCreateEvent ?? (() => navigate('/calendar'));
 
   const isInstructor = user?.role === 'INSTRUCTOR';
+  const inboxNotifications = user?.id ? getInboxNotifications(user.id).slice(0, 3) : [];
 
   // Today's events — Instructor sees only LAB events
   const todayEvents = events
@@ -52,11 +46,14 @@ export default function InstructorDashboard({ onCreateEvent }: { onCreateEvent?:
     .filter(e => e.status === 'PENDING' && e.createdBy === user?.id)
     .slice(0, 4);
 
-  const readIds = getReadIds();
-  const mockNotifications = BASE_NOTIFICATIONS.map(n => ({ ...n, unread: !readIds.includes(n.id) }));
-
   const getCalendarColor = (calendarId: string) =>
     calendars.find(c => c.id === calendarId)?.color || '#6366F1';
+
+  const getNotifBorderColor = (type: string) => {
+    if (type === 'success') return 'border-green-200 bg-green-50';
+    if (type === 'error')   return 'border-red-200 bg-red-50';
+    return 'border-primary/20 bg-primary/5';
+  };
 
   const getStatusLabel = (status?: string) =>
     status ? status.charAt(0) + status.slice(1).toLowerCase() : 'Scheduled';
@@ -196,20 +193,27 @@ export default function InstructorDashboard({ onCreateEvent }: { onCreateEvent?:
             <h2 className="font-semibold text-gray-900">Notifications</h2>
             <Link to="/notifications" className="text-sm text-primary hover:text-primary-600">View all</Link>
           </div>
-          <div className="space-y-3">
-            {mockNotifications.map(n => (
-              <div key={n.id} className={`p-3 rounded-lg border ${n.unread ? 'border-primary/20 bg-primary/5' : 'border-gray-100'}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{n.desc}</p>
+          {inboxNotifications.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <BellOff className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">No notifications yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {inboxNotifications.map(n => (
+                <div key={n.id} className={`p-3 rounded-lg border ${n.read ? 'border-gray-100' : getNotifBorderColor(n.type)}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{n.description}</p>
+                    </div>
+                    {!n.read && <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1.5" />}
                   </div>
-                  {n.unread && <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1.5" />}
+                  <p className="text-xs text-gray-400 mt-1.5">{n.time}</p>
                 </div>
-                <p className="text-xs text-gray-400 mt-1.5">{n.time}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

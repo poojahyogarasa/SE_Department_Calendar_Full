@@ -4,13 +4,8 @@ import {
   Calendar,
   Bell,
   CheckSquare,
-  FileText,
   Settings,
   ClipboardCheck,
-  Users,
-  MapPin,
-  Megaphone,
-  BarChart3,
   HelpCircle,
   Shield
 } from 'lucide-react';
@@ -35,21 +30,15 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
     { to: '/notifications', icon: Bell, label: 'Notifications' },
     { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
-    { to: '/documents', icon: FileText, label: 'Documents', hidden: !isStaff },
   ];
 
   const staffItems = [
     // Approvals only for HOD / Admin
     { to: '/approvals', icon: ClipboardCheck, label: 'Approvals', badge: pendingCount, hidden: !canApprove },
-    { to: '/attendance', icon: Users, label: 'Attendance' },
-    { to: '/venues', icon: MapPin, label: 'Venues' },
-    { to: '/announcements', icon: Megaphone, label: 'Announcements' },
-    { to: '/reports', icon: BarChart3, label: 'Reports' },
   ];
 
   const adminItems = [
     { to: '/user-roles', icon: Shield, label: 'User Roles' },
-    { to: '/calendar-management', icon: Calendar, label: 'Calendar Management' },
   ];
 
   const bottomItems = [

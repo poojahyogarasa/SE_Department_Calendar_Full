@@ -11,18 +11,15 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { getInboxNotifications } from '../../utils/storage';
 
 interface HeaderProps {
   onNewEvent?: () => void;
 }
 
-const STORAGE_KEY = 'notifications_read_ids';
-const BASE_NOTIFICATION_IDS = ['1', '2', '3', '4'];
-
-function getUnreadCount(): number {
+function getUnreadCount(userId?: string): number {
   try {
-    const readIds: string[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    return BASE_NOTIFICATION_IDS.filter(id => !readIds.includes(id)).length;
+    return userId ? getInboxNotifications(userId).filter(n => !n.read).length : 0;
   } catch {
     return 0;
   }
@@ -34,20 +31,20 @@ export default function Header({ onNewEvent }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [unreadCount, setUnreadCount] = useState(getUnreadCount);
+  const [unreadCount, setUnreadCount] = useState(() => getUnreadCount(user?.id));
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Re-compute unread count whenever route changes (e.g. returning from /notifications)
   useEffect(() => {
-    setUnreadCount(getUnreadCount());
-  }, [location.pathname]);
+    setUnreadCount(getUnreadCount(user?.id));
+  }, [location.pathname, user?.id]);
 
-  // Also update in real-time via storage events (when another tab marks as read)
+  // Also update in real-time via storage events (inbox notification written in same tab)
   useEffect(() => {
-    const handleStorage = () => setUnreadCount(getUnreadCount());
+    const handleStorage = () => setUnreadCount(getUnreadCount(user?.id));
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [user?.id]);
 
   // Close menu on outside click
   useEffect(() => {

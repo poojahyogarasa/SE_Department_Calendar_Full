@@ -45,7 +45,7 @@ const deserialize = <T>(data: string): T => {
 };
 
 // Bump this version whenever the mock data schema changes to force re-initialisation
-const DATA_VERSION = '2';
+const DATA_VERSION = '3';
 
 /**
  * Initialize storage with mock data on first run (or after a version bump)
@@ -160,6 +160,39 @@ export const exportAllData = () => {
     auditLogs: getStoredAuditLogs(),
     resources: getStoredResources(),
   };
+};
+
+// Per-user notification inbox (approval/rejection notifications from HOD)
+export interface InboxNotification {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
+
+export const getInboxNotifications = (userId: string): InboxNotification[] => {
+  try {
+    const key = `notifications_inbox_${userId}`;
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  } catch { return []; }
+};
+
+export const saveInboxNotifications = (userId: string, items: InboxNotification[]): void => {
+  localStorage.setItem(`notifications_inbox_${userId}`, JSON.stringify(items));
+};
+
+export const addInboxNotification = (userId: string, notif: Omit<InboxNotification, 'id' | 'read'>): void => {
+  const existing = getInboxNotifications(userId);
+  const newNotif: InboxNotification = {
+    ...notif,
+    id: `inbox-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    read: false,
+  };
+  saveInboxNotifications(userId, [newNotif, ...existing]);
+  // Dispatch storage event so Header badge updates in the same tab
+  window.dispatchEvent(new Event('storage'));
 };
 
 // Tasks (per user)

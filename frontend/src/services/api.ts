@@ -112,4 +112,11 @@ export const auditAPI = {
     api.post('/audit', data),
 };
 
+export const usersAPI = {
+  getByRoles: (roles: string[]) =>
+    api.get<{ id: number; name: string; email: string; role: string }[]>(
+      `/auth/users?roles=${roles.join(',')}`
+    ),
+};
+
 export default api;

@@ -3,6 +3,8 @@ import { X, Calendar, Clock, MapPin, Tag, Trash2, AlertTriangle } from 'lucide-r
 import { format } from 'date-fns';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { addInboxNotification } from '../../utils/storage';
+import { usersAPI } from '../../services/api';
 import type { Event, EventCategory, EventVisibility } from '../../types';
 
 interface EventModalProps {
@@ -20,6 +22,20 @@ export default function EventModal({ isOpen, onClose, event, initialDate }: Even
   const isLecturer = user?.role === 'LECTURER';
   const needsApproval = isLecturer || isInstructor;
 
+  // Map event category to the matching calendar by name
+  const getCategoryCalendarId = (category: EventCategory): string => {
+    const nameMap: Record<EventCategory, string> = {
+      LECTURE: 'Academic Calendar',
+      EXAM:    'Examinations',
+      SEMINAR: 'Seminars & Workshops',
+      MEETING: 'Staff Meetings',
+      LAB:     'Lab Bookings',
+      OTHER:   'Academic Calendar',
+    };
+    const match = calendars.find(c => c.name === nameMap[category]);
+    return match?.id || calendars[0]?.id || '';
+  };
+
   const [title, setTitle] = useState('');
   const [eventType, setEventType] = useState<EventCategory>(isInstructor ? 'LAB' : 'LECTURE');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -30,7 +46,7 @@ export default function EventModal({ isOpen, onClose, event, initialDate }: Even
   const [targetAudience, setTargetAudience] = useState('');
   const [notificationTime, setNotificationTime] = useState('30');
   const [studentCount, setStudentCount] = useState<string>('');
-  const [calendarId, setCalendarId] = useState(calendars[0]?.id || '');
+  const [calendarId, setCalendarId] = useState(() => getCategoryCalendarId(isInstructor ? 'LAB' : 'LECTURE'));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -126,14 +142,41 @@ export default function EventModal({ isOpen, onClose, event, initialDate }: Even
       createdBy: user?.id || '',
       notificationMinutes: notificationTime ? parseInt(notificationTime, 10) : undefined,
       studentCount: studentCount ? parseInt(studentCount, 10) : undefined,
-      // Lecturer / Instructor events go through HOD approval
-      status: (!isEditing && needsApproval) ? 'PENDING' as const : undefined,
+      // LECTURER/INSTRUCTOR always go through HOD approval (including re-edits)
+      // ADMIN/HOD: omit status so updateEvent preserves the existing value
+      ...(needsApproval ? { status: 'PENDING' as const } : {}),
     };
 
     if (isEditing && event) {
       updateEvent(event.id, eventData);
+      // Notify HOD users that a re-submission needs approval
+      if (needsApproval) {
+        usersAPI.getByRoles(['HOD', 'ADMIN']).then(res => {
+          res.data.forEach(u => {
+            addInboxNotification(String(u.id), {
+              title: `Event Re-submitted: ${title}`,
+              description: `${user?.name ?? 'A user'} has updated "${title}" and it requires your re-approval.`,
+              time: new Date().toLocaleDateString(),
+              type: 'warning',
+            });
+          });
+        }).catch(() => {});
+      }
     } else {
       addEvent(eventData);
+      // Notify HOD users that a new event is pending approval
+      if (needsApproval) {
+        usersAPI.getByRoles(['HOD', 'ADMIN']).then(res => {
+          res.data.forEach(u => {
+            addInboxNotification(String(u.id), {
+              title: `New Event Pending: ${title}`,
+              description: `${user?.name ?? 'A user'} submitted "${title}" for your approval.`,
+              time: new Date().toLocaleDateString(),
+              type: 'info',
+            });
+          });
+        }).catch(() => {});
+      }
     }
 
     onClose();
@@ -240,7 +283,11 @@ export default function EventModal({ isOpen, onClose, event, initialDate }: Even
               <label className="input-label">Event Type</label>
               <select
                 value={eventType}
-                onChange={(e) => setEventType(e.target.value as EventCategory)}
+                onChange={(e) => {
+                  const cat = e.target.value as EventCategory;
+                  setEventType(cat);
+                  setCalendarId(getCategoryCalendarId(cat));
+                }}
                 className={`input-field ${errors.eventType ? 'border-red-500' : ''}`}
                 disabled={isInstructor}
               >

@@ -37,6 +37,17 @@ export default function SettingsPage() {
   const [department, setDepartment] = useState(user?.department || '');
   const [accountSaved, setAccountSaved] = useState(false);
 
+  // Notification Preferences state
+  const [notifEmail, setNotifEmail] = useState(true);
+  const [notifPush, setNotifPush] = useState(true);
+  const [notifReminders, setNotifReminders] = useState(true);
+  const [notifDigest, setNotifDigest] = useState(false);
+
+  // Event Defaults state
+  const [defaultVisibility, setDefaultVisibility] = useState('PUBLIC');
+  const [defaultReminder, setDefaultReminder] = useState('30');
+  const [defaultsSaved, setDefaultsSaved] = useState(false);
+
   // BUG_010: Compute real user initials
   const userInitials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -159,7 +170,7 @@ export default function SettingsPage() {
                   </div>
                   <select
                     value={firstDayOfWeek}
-                    onChange={(e) => setFirstDayOfWeek(e.target.value)}
+                    onChange={(e) => setFirstDayOfWeek(e.target.value as 'sunday' | 'monday')}
                     className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
                   >
                     <option value="sunday">Sunday</option>
@@ -179,17 +190,17 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {[
-                { label: 'Email Notifications', description: 'Receive notifications via email', enabled: true },
-                { label: 'Push Notifications', description: 'Receive browser push notifications', enabled: true },
-                { label: 'Event Reminders', description: 'Get reminded before events start', enabled: true },
-                { label: 'Weekly Digest', description: 'Receive a weekly summary of events', enabled: false },
-              ].map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                { label: 'Email Notifications', description: 'Receive notifications via email', enabled: notifEmail, onChange: setNotifEmail },
+                { label: 'Push Notifications', description: 'Receive browser push notifications', enabled: notifPush, onChange: setNotifPush },
+                { label: 'Event Reminders', description: 'Get reminded before events start', enabled: notifReminders, onChange: setNotifReminders },
+                { label: 'Weekly Digest', description: 'Receive a weekly summary of events', enabled: notifDigest, onChange: setNotifDigest },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                   <div>
                     <p className="font-medium text-gray-900">{item.label}</p>
                     <p className="text-sm text-gray-500">{item.description}</p>
                   </div>
-                  <Toggle enabled={item.enabled} onChange={() => {}} />
+                  <Toggle enabled={item.enabled} onChange={item.onChange} />
                 </div>
               ))}
             </div>
@@ -326,9 +337,18 @@ export default function SettingsPage() {
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Event Defaults</h3>
             <p className="text-sm text-gray-500 mb-6">Configure default values for new events created in the system.</p>
             <div className="max-w-xl space-y-4">
+              {defaultsSaved && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm">
+                  Event defaults saved.
+                </div>
+              )}
               <div>
                 <label className="input-label">Default Event Visibility</label>
-                <select className="input-field">
+                <select
+                  className="input-field"
+                  value={defaultVisibility}
+                  onChange={(e) => { setDefaultVisibility(e.target.value); setDefaultsSaved(false); }}
+                >
                   <option value="PUBLIC">Public — visible to everyone</option>
                   <option value="STAFF_ONLY">Staff Only</option>
                   <option value="PRIVATE">Private</option>
@@ -336,13 +356,17 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="input-label">Default Reminder</label>
-                <select className="input-field">
+                <select
+                  className="input-field"
+                  value={defaultReminder}
+                  onChange={(e) => { setDefaultReminder(e.target.value); setDefaultsSaved(false); }}
+                >
                   <option value="30">30 minutes before</option>
                   <option value="60">1 hour before</option>
                   <option value="1440">1 day before</option>
                 </select>
               </div>
-              <button className="btn-primary">Save Defaults</button>
+              <button className="btn-primary" onClick={() => setDefaultsSaved(true)}>Save Defaults</button>
             </div>
           </div>
         );

@@ -1,49 +1,14 @@
 import { useState } from 'react';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, getDay,
-  isSameDay, isSameMonth, isToday, isThisWeek, startOfWeek, endOfWeek, addDays
+  isSameDay, isSameMonth, isToday, isThisWeek, startOfWeek, endOfWeek
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Beaker, Wifi, Info, MessageCircle, Calendar, Clock, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Beaker, Wifi, Info, BellOff, Calendar, Clock, MapPin } from 'lucide-react';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { getInboxNotifications } from '../../utils/storage';
 import EventDetailsModal from '../modals/EventDetailsModal';
 import type { Event } from '../../types';
-
-const alerts = [
-  {
-    id: '1',
-    type: 'urgent' as const,
-    badge: 'Urgent',
-    badgeColor: 'bg-red-500',
-    message: 'Lab B203 equipment failure detected. Emergency shutdown initiated. Please investigate.',
-    time: '2 hours ago',
-    action: 'Acknowledge',
-  },
-  {
-    id: '2',
-    type: 'update' as const,
-    badge: 'Update',
-    badgeColor: 'bg-teal-500',
-    message: 'Upcoming server maintenance on 2024-08-25. Labs will be unavailable from 01:00 AM to 04:00 AM.',
-    time: 'Yesterday',
-    action: 'View Details',
-  },
-  {
-    id: '3',
-    type: 'info' as const,
-    badge: 'Information',
-    badgeColor: 'bg-blue-500',
-    message: 'New lab safety protocols released. All personnel must review by end of month.',
-    time: '3 days ago',
-    action: 'Read Policy',
-  },
-];
-
-const AlertIcon = ({ type }: { type: string }) => {
-  if (type === 'urgent') return <MessageCircle className="w-5 h-5 text-red-500" />;
-  if (type === 'info')   return <Info className="w-5 h-5 text-blue-500" />;
-  return <Wifi className="w-5 h-5 text-teal-500" />;
-};
 
 function MiniCalendar({ labEvents }: { labEvents: Event[] }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -119,7 +84,7 @@ export default function TODashboard() {
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<string[]>([]);
+  const inboxNotifications = user?.id ? getInboxNotifications(user.id).slice(0, 3) : [];
 
   // Lab sessions only (TO manages labs)
   const labEvents = events.filter(e => e.category === 'LAB');
@@ -150,7 +115,6 @@ export default function TODashboard() {
 
   const userName = user?.name?.split(' ')[0] || 'there';
 
-  const visibleAlerts = alerts.filter(a => !acknowledgedAlerts.includes(a.id));
 
   return (
     <div className="p-6">
@@ -232,36 +196,29 @@ export default function TODashboard() {
         </div>
       </div>
 
-      {/* Alerts & Messages */}
-      {visibleAlerts.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Alerts &amp; Messages</h2>
-          <div className="space-y-0 divide-y divide-gray-100">
-            {visibleAlerts.map(alert => (
-              <div key={alert.id} className="py-4 flex items-start gap-4">
-                <AlertIcon type={alert.type} />
+      {/* Notifications */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="font-semibold text-gray-900 mb-4">Notifications</h2>
+        {inboxNotifications.length === 0 ? (
+          <div className="text-center py-6 text-gray-400">
+            <BellOff className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p className="text-sm">No notifications yet</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {inboxNotifications.map(n => (
+              <div key={n.id} className="py-3 flex items-start gap-3">
+                <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full text-white ${alert.badgeColor}`}>
-                      {alert.badge}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{alert.message}</p>
-                  {alert.action && (
-                    <button
-                      className="text-sm text-primary font-medium mt-2 hover:text-primary-600 transition-colors"
-                      onClick={() => setAcknowledgedAlerts(prev => [...prev, alert.id])}
-                    >
-                      {alert.action}
-                    </button>
-                  )}
+                  <p className={`text-sm font-medium ${n.read ? 'text-gray-600' : 'text-gray-900'}`}>{n.title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{n.description}</p>
                 </div>
-                <span className="text-xs text-gray-400 flex-shrink-0">{alert.time}</span>
+                {!n.read && <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1" />}
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Event Details Modal */}
       {showDetails && selectedEvent && (

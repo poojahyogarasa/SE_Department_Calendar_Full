@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { BellOff, Check, Pencil, Trash2, X, Save } from 'lucide-react';
 import { notificationsAPI } from '../../services/api';
+import { getInboxNotifications, saveInboxNotifications } from '../../utils/storage';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 interface Notification {
   id: string;
@@ -11,66 +13,22 @@ interface Notification {
   type: 'info' | 'warning' | 'success' | 'error';
 }
 
-const STORAGE_KEY = 'notifications_read_ids';
-
-const getPersistedReadIds = (): string[] => {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-  catch { return []; }
-};
-
-const BASE_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    title: 'New Grade Posted: COMP301',
-    description: 'Your final grade for Operating Systems has been posted. View details in the academic portal.',
-    time: '5 minutes ago',
-    read: false,
-    type: 'success',
-  },
-  {
-    id: '2',
-    title: 'Software Update Available',
-    description: 'Important security updates for academic software suite are now available. Please install at your earliest convenience.',
-    time: '1 hour ago',
-    read: false,
-    type: 'info',
-  },
-  {
-    id: '3',
-    title: 'Upcoming Holiday: Labour Day',
-    description: 'The university will be closed on September 2nd for Labour Day. Classes will resume on September 3rd.',
-    time: 'Yesterday',
-    read: true,
-    type: 'info',
-  },
-  {
-    id: '4',
-    title: 'New Research Grant Opportunity',
-    description: 'A new grant opportunity in Quantum Computing is now open for applications. Deadline: Oct 15.',
-    time: '2 days ago',
-    read: true,
-    type: 'info',
-  },
-];
-
 const isBackendId = (id: string) => id.startsWith('backend-');
 const extractBackendId = (id: string) => id.replace('backend-', '');
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    const readIds = getPersistedReadIds();
-    return BASE_NOTIFICATIONS.map(n => ({
-      ...n,
-      read: n.read || readIds.includes(n.id),
-    }));
-  });
+  const { user } = useAuthStore();
+
+  const [notifications, setNotifications] = useState<Notification[]>(() =>
+    user?.id ? getInboxNotifications(user.id) : []
+  );
 
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  // M3: Load notifications from backend on mount, merge with base
+  // Load notifications from backend on mount, merge with inbox
   useEffect(() => {
     notificationsAPI.getAll()
       .then((res: { data: any[] }) => {
@@ -82,16 +40,12 @@ export default function NotificationsPage() {
           read: n.is_read === 1 || n.is_read === true,
           type: 'info' as const,
         }));
-
-        // Merge: backend notifications first, then local base notifications not duplicated
         setNotifications(prev => {
-          const baseWithRead = prev.filter(n => !isBackendId(n.id));
-          return [...backendNotifs, ...baseWithRead];
+          const inboxItems = prev.filter(n => !isBackendId(n.id));
+          return [...backendNotifs, ...inboxItems];
         });
       })
-      .catch(() => {
-        // Backend unavailable — keep localStorage-based state
-      });
+      .catch(() => {});
   }, []);
 
   const filteredNotifications = notifications.filter(n => {
@@ -100,19 +54,21 @@ export default function NotificationsPage() {
   });
 
   const markAsRead = (id: string) => {
-    // Persist for non-backend notifications
-    if (!isBackendId(id)) {
-      const readIds = getPersistedReadIds();
-      if (!readIds.includes(id)) localStorage.setItem(STORAGE_KEY, JSON.stringify([...readIds, id]));
-    } else {
+    if (isBackendId(id)) {
       notificationsAPI.markAsRead(extractBackendId(id)).catch(() => {});
+    } else if (id.startsWith('inbox-') && user?.id) {
+      const inbox = getInboxNotifications(user.id).map(n => n.id === id ? { ...n, read: true } : n);
+      saveInboxNotifications(user.id, inbox);
     }
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllAsRead = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications.map(n => n.id)));
     notificationsAPI.markAllAsRead().catch(() => {});
+    if (user?.id) {
+      const inbox = getInboxNotifications(user.id).map(n => ({ ...n, read: true }));
+      saveInboxNotifications(user.id, inbox);
+    }
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
@@ -120,9 +76,9 @@ export default function NotificationsPage() {
     e.stopPropagation();
     if (isBackendId(id)) {
       notificationsAPI.deleteNotification(extractBackendId(id)).catch(() => {});
-    } else {
-      const readIds = getPersistedReadIds().filter((rid: string) => rid !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(readIds));
+    } else if (id.startsWith('inbox-') && user?.id) {
+      const inbox = getInboxNotifications(user.id).filter(n => n.id !== id);
+      saveInboxNotifications(user.id, inbox);
     }
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
