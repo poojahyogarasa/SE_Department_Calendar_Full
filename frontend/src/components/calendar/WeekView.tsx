@@ -142,8 +142,8 @@ export default function WeekView({ date, events, calendars, onEventClick, use24H
                       }}
                     >
                       <p className="text-white text-xs font-medium truncate">{event.title}</p>
+                      {/* BUG_029: use 24h format if setting is enabled */}
                       {height > 40 && (
-                        {/* BUG_029: use 24h format if setting is enabled */}
                         <p className="text-white/80 text-xs">
                           {format(new Date(event.start), use24Hour ? 'HH:mm' : 'h:mm a')}
                         </p>

@@ -23,20 +23,16 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        // Role-based redirect after login — read user from store
-        const loggedInUser = useAuthStore.getState().user;
-        if (loggedInUser && canApproveEvents(loggedInUser)) {
-          navigate('/approvals');
-        } else {
-          navigate('/');
-        }
+      await login(email, password);
+      // Role-based redirect after login — read user from store
+      const loggedInUser = useAuthStore.getState().user;
+      if (loggedInUser && canApproveEvents(loggedInUser)) {
+        navigate('/approvals');
       } else {
-        setError('Invalid email or password');
+        navigate('/');
       }
-    } catch {
-      setError('An error occurred. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

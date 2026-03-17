@@ -21,14 +21,32 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { authAPI } from '../../services/api';
 
 type SettingsSection = 'display' | 'notifications' | 'account' | 'security' | 'calendar' | 'event-defaults' | 'user-roles' | 'integrations' | 'help';
 
 export default function SettingsPage() {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<SettingsSection>('display');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Account Management local state
+  const [displayName, setDisplayName] = useState(user?.name || '');
+  const [department, setDepartment] = useState(user?.department || '');
+  const [accountSaved, setAccountSaved] = useState(false);
+
+  // Notification Preferences state
+  const [notifEmail, setNotifEmail] = useState(true);
+  const [notifPush, setNotifPush] = useState(true);
+  const [notifReminders, setNotifReminders] = useState(true);
+  const [notifDigest, setNotifDigest] = useState(false);
+
+  // Event Defaults state
+  const [defaultVisibility, setDefaultVisibility] = useState('PUBLIC');
+  const [defaultReminder, setDefaultReminder] = useState('30');
+  const [defaultsSaved, setDefaultsSaved] = useState(false);
 
   // BUG_010: Compute real user initials
   const userInitials = user?.name
@@ -70,6 +88,11 @@ export default function SettingsPage() {
     >
       <span className={`toggle-dot ${enabled ? 'toggle-dot-active' : 'toggle-dot-inactive'}`} />
     </button>
+  );
+
+  const filteredSections = sections.filter(s =>
+    searchQuery.trim() === '' ||
+    s.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSectionClick = (sectionId: SettingsSection) => {
@@ -147,7 +170,7 @@ export default function SettingsPage() {
                   </div>
                   <select
                     value={firstDayOfWeek}
-                    onChange={(e) => setFirstDayOfWeek(e.target.value)}
+                    onChange={(e) => setFirstDayOfWeek(e.target.value as 'sunday' | 'monday')}
                     className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
                   >
                     <option value="sunday">Sunday</option>
@@ -167,17 +190,17 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {[
-                { label: 'Email Notifications', description: 'Receive notifications via email', enabled: true },
-                { label: 'Push Notifications', description: 'Receive browser push notifications', enabled: true },
-                { label: 'Event Reminders', description: 'Get reminded before events start', enabled: true },
-                { label: 'Weekly Digest', description: 'Receive a weekly summary of events', enabled: false },
-              ].map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                { label: 'Email Notifications', description: 'Receive notifications via email', enabled: notifEmail, onChange: setNotifEmail },
+                { label: 'Push Notifications', description: 'Receive browser push notifications', enabled: notifPush, onChange: setNotifPush },
+                { label: 'Event Reminders', description: 'Get reminded before events start', enabled: notifReminders, onChange: setNotifReminders },
+                { label: 'Weekly Digest', description: 'Receive a weekly summary of events', enabled: notifDigest, onChange: setNotifDigest },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                   <div>
                     <p className="font-medium text-gray-900">{item.label}</p>
                     <p className="text-sm text-gray-500">{item.description}</p>
                   </div>
-                  <Toggle enabled={item.enabled} onChange={() => {}} />
+                  <Toggle enabled={item.enabled} onChange={item.onChange} />
                 </div>
               ))}
             </div>
@@ -190,21 +213,56 @@ export default function SettingsPage() {
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Account Management</h3>
             <p className="text-sm text-gray-500 mb-6">Update your personal information and preferences.</p>
 
+            {accountSaved && (
+              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm">
+                Profile updated successfully.
+              </div>
+            )}
+
             <div className="max-w-xl space-y-6">
               <div>
                 <label className="input-label">Display Name</label>
-                <input type="text" className="input-field" defaultValue="John Doe" />
+                <input
+                  type="text"
+                  className="input-field"
+                  value={displayName}
+                  onChange={e => { setDisplayName(e.target.value); setAccountSaved(false); }}
+                />
               </div>
               <div>
                 <label className="input-label">Email Address</label>
-                <input type="email" className="input-field" defaultValue="john.doe@example.edu" disabled />
+                <input type="email" className="input-field" value={user?.email || ''} disabled />
+                <p className="text-xs text-gray-400 mt-1">Email cannot be changed. Contact admin to update.</p>
               </div>
               <div>
                 <label className="input-label">Department</label>
-                <input type="text" className="input-field" defaultValue="Computer Engineering" />
+                <input
+                  type="text"
+                  className="input-field"
+                  value={department}
+                  onChange={e => { setDepartment(e.target.value); setAccountSaved(false); }}
+                />
               </div>
 
-              <button className="btn-primary">Save Changes</button>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  if (user) {
+                    const newName = displayName.trim() || user.name;
+                    const newDept = department.trim() || user.department;
+                    setUser({ ...user, name: newName, department: newDept });
+                    setAccountSaved(true);
+
+                    // H5: Persist profile to backend (fire-and-forget)
+                    const nameParts = newName.split(' ');
+                    const first_name = nameParts[0] || '';
+                    const last_name = nameParts.slice(1).join(' ') || '';
+                    authAPI.updateProfile({ first_name, last_name, department: newDept }).catch(() => {});
+                  }
+                }}
+              >
+                Save Changes
+              </button>
             </div>
           </div>
         );
@@ -243,6 +301,137 @@ export default function SettingsPage() {
           </div>
         );
 
+      case 'calendar':
+        return (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Calendar Management</h3>
+            <p className="text-sm text-gray-500 mb-6">Manage department calendars, visibility, and access control.</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="p-5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <h4 className="font-medium text-gray-900 mb-2">Public Calendar</h4>
+                <p className="text-sm text-gray-500 mb-3">Visible to all users including students.</p>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 font-medium">Active</span>
+              </div>
+              <div className="p-5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <h4 className="font-medium text-gray-900 mb-2">Staff Calendar</h4>
+                <p className="text-sm text-gray-500 mb-3">Visible to staff and above only.</p>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 font-medium">Active</span>
+              </div>
+              <div className="p-5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <h4 className="font-medium text-gray-900 mb-2">Event Approval Policy</h4>
+                <p className="text-sm text-gray-500 mb-3">Lecturer and Instructor events require HOD approval before going live.</p>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Enforced</span>
+              </div>
+              <div className="p-5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <h4 className="font-medium text-gray-900 mb-2">Lab Booking Policy</h4>
+                <p className="text-sm text-gray-500 mb-3">Only Instructors may schedule lab sessions. Conflicts are auto-detected.</p>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Enforced</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'event-defaults':
+        return (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Event Defaults</h3>
+            <p className="text-sm text-gray-500 mb-6">Configure default values for new events created in the system.</p>
+            <div className="max-w-xl space-y-4">
+              {defaultsSaved && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm">
+                  Event defaults saved.
+                </div>
+              )}
+              <div>
+                <label className="input-label">Default Event Visibility</label>
+                <select
+                  className="input-field"
+                  value={defaultVisibility}
+                  onChange={(e) => { setDefaultVisibility(e.target.value); setDefaultsSaved(false); }}
+                >
+                  <option value="PUBLIC">Public — visible to everyone</option>
+                  <option value="STAFF_ONLY">Staff Only</option>
+                  <option value="PRIVATE">Private</option>
+                </select>
+              </div>
+              <div>
+                <label className="input-label">Default Reminder</label>
+                <select
+                  className="input-field"
+                  value={defaultReminder}
+                  onChange={(e) => { setDefaultReminder(e.target.value); setDefaultsSaved(false); }}
+                >
+                  <option value="30">30 minutes before</option>
+                  <option value="60">1 hour before</option>
+                  <option value="1440">1 day before</option>
+                </select>
+              </div>
+              <button className="btn-primary" onClick={() => setDefaultsSaved(true)}>Save Defaults</button>
+            </div>
+          </div>
+        );
+
+      case 'user-roles':
+        return (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">User Roles</h3>
+            <p className="text-sm text-gray-500 mb-6">Overview of role permissions in the system.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 pr-4 text-gray-500 font-semibold">Role</th>
+                    <th className="text-left py-2 pr-4 text-gray-500 font-semibold">Create Events</th>
+                    <th className="text-left py-2 pr-4 text-gray-500 font-semibold">Approve Events</th>
+                    <th className="text-left py-2 text-gray-500 font-semibold">Admin Access</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {[
+                    { role: 'Admin',            create: '✓', approve: '✓', admin: '✓' },
+                    { role: 'HOD',              create: '✓', approve: '✓', admin: '✓' },
+                    { role: 'Lecturer',         create: '✓ (pending)',  approve: '—', admin: '—' },
+                    { role: 'Instructor',       create: 'Lab only',    approve: '—', admin: '—' },
+                    { role: 'Technical Officer',create: '—', approve: '—', admin: '—' },
+                    { role: 'Student',          create: '—', approve: '—', admin: '—' },
+                  ].map(row => (
+                    <tr key={row.role}>
+                      <td className="py-3 pr-4 font-medium text-gray-900">{row.role}</td>
+                      <td className="py-3 pr-4 text-gray-600">{row.create}</td>
+                      <td className="py-3 pr-4 text-gray-600">{row.approve}</td>
+                      <td className="py-3 text-gray-600">{row.admin}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case 'integrations':
+        return (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Integrations</h3>
+            <p className="text-sm text-gray-500 mb-6">Connect third-party services with the calendar system.</p>
+            <div className="max-w-xl space-y-4">
+              <div className="p-4 bg-gray-50 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">Google Calendar Sync</p>
+                  <p className="text-sm text-gray-500">Sync events with Google Calendar.</p>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-600">Coming soon</span>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">Email Notifications (SMTP)</p>
+                  <p className="text-sm text-gray-500">Send automated event emails to users.</p>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-600">Coming soon</span>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return (
           <div>
@@ -257,10 +446,10 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium text-gray-900">Email Administrator</p>
                   <a
-                    href="mailto:mmsalmanmmskk@gmail.com"
+                    href="mailto:admin@department.edu"
                     className="text-sm text-primary hover:underline"
                   >
-                    mmsalmanmmskk@gmail.com
+                    admin@department.edu
                   </a>
                 </div>
               </div>
@@ -300,7 +489,7 @@ export default function SettingsPage() {
 
         {/* Sidebar navigation */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
-          {sections.map((section) => {
+          {filteredSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
 
@@ -351,6 +540,8 @@ export default function SettingsPage() {
               <input
                 type="text"
                 placeholder="Search settings..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-white transition-all"
               />
             </div>

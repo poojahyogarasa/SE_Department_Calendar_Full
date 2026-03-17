@@ -6,17 +6,18 @@ import {
   BarChart3,
   FileText,
   Settings,
-  HelpCircle,
-  Shield,
   ChevronDown,
   Bell,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { canApproveEvents } from '../../utils/permissions';
+import { hodAPI, usersAPI } from '../../services/api';
+import { addInboxNotification } from '../../utils/storage';
 import type { Event } from '../../types';
 
 export default function ApprovalsPage() {
@@ -50,6 +51,28 @@ export default function ApprovalsPage() {
 
   const handleApprove = (event: Event) => {
     updateEvent(event.id, { status: 'APPROVED', rejectionReason: undefined });
+    hodAPI.approveEvent(event.id).catch(() => {});
+    // Notify the event creator
+    if (event.createdBy) {
+      addInboxNotification(event.createdBy, {
+        title: `Event Approved: ${event.title}`,
+        description: `Your event "${event.title}" scheduled on ${format(new Date(event.start), 'dd MMM yyyy')} has been approved by HOD.`,
+        time: 'Just now',
+        type: 'success',
+      });
+    }
+    // Notify students, TOs, and instructors that a new event is available
+    usersAPI.getByRoles(['STUDENT', 'TECHNICAL_OFFICER', 'INSTRUCTOR', 'LECTURER']).then(res => {
+      res.data.forEach(u => {
+        if (String(u.id) === event.createdBy) return; // creator already notified above
+        addInboxNotification(String(u.id), {
+          title: `New Event: ${event.title}`,
+          description: `"${event.title}" on ${format(new Date(event.start), 'dd MMM yyyy')} at ${format(new Date(event.start), 'HH:mm')} has been approved and added to the calendar.`,
+          time: 'Just now',
+          type: 'info',
+        });
+      });
+    }).catch(() => {});
   };
 
   const openRejectDialog = (event: Event) => {
@@ -64,11 +87,43 @@ export default function ApprovalsPage() {
       return;
     }
     if (rejectTarget) {
-      updateEvent(rejectTarget.id, { status: 'REJECTED', rejectionReason: rejectionReason.trim() });
+      const reason = rejectionReason.trim();
+      updateEvent(rejectTarget.id, { status: 'REJECTED', rejectionReason: reason });
+      hodAPI.rejectEvent(rejectTarget.id, reason).catch(() => {});
+      if (rejectTarget.createdBy) {
+        addInboxNotification(rejectTarget.createdBy, {
+          title: `Event Rejected: ${rejectTarget.title}`,
+          description: `Your event "${rejectTarget.title}" was rejected by HOD. Reason: ${reason}`,
+          time: 'Just now',
+          type: 'error',
+        });
+      }
     }
     setRejectTarget(null);
     setRejectionReason('');
     setReasonError('');
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Title', 'Date', 'Time', 'Requested By', 'Type', 'Status'];
+    if (activeView === 'rejected') headers.push('Rejection Reason');
+    const rows = displayedEvents.map(e => [
+      `"${e.title.replace(/"/g, '""')}"`,
+      format(new Date(e.start), 'yyyy-MM-dd'),
+      format(new Date(e.start), 'HH:mm'),
+      e.createdBy || '',
+      e.category,
+      e.status,
+      ...(activeView === 'rejected' ? [`"${(e.rejectionReason || '').replace(/"/g, '""')}"`] : []),
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `events-${activeView}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const cancelReject = () => {
@@ -78,11 +133,9 @@ export default function ApprovalsPage() {
   };
 
   const sidebarLinks = [
-    { id: 'pending', icon: Mail, label: 'Pending', count: pendingEvents.length },
+    { id: 'pending',  icon: Mail,        label: 'Pending',  count: pendingEvents.length },
     { id: 'approved', icon: CheckCircle, label: 'Approved', count: approvedEvents.length },
-    { id: 'rejected', icon: FileText, label: 'Rejected', count: rejectedEvents.length },
-    { id: 'reports', icon: BarChart3, label: 'Reports', count: 0 },
-    { id: 'settings', icon: Settings, label: 'Settings', count: 0 },
+    { id: 'rejected', icon: FileText,    label: 'Rejected', count: rejectedEvents.length },
   ];
 
   const displayedEvents =
@@ -147,7 +200,7 @@ export default function ApprovalsPage() {
         {/* User Info */}
         <div className="flex items-center gap-3 pb-4 border-b border-gray-200 mb-4">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-            {user?.name?.charAt(0) ?? '?'}
+            {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-gray-900 truncate">{user?.name ?? 'Unknown'}</p>
@@ -189,17 +242,6 @@ export default function ApprovalsPage() {
           })}
         </nav>
 
-        {/* Bottom Links */}
-        <div className="absolute bottom-4 left-4 space-y-3">
-          <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm">
-            <HelpCircle className="w-4 h-4" />
-            Help & Support
-          </button>
-          <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm">
-            <Shield className="w-4 h-4" />
-            Privacy Policy
-          </button>
-        </div>
       </div>
 
       {/* Main Content */}
@@ -215,7 +257,7 @@ export default function ApprovalsPage() {
               <Settings className="w-5 h-5 text-gray-600" />
             </button>
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-              {user?.name?.charAt(0) ?? '?'}
+              {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}
             </div>
           </div>
         </div>
@@ -262,7 +304,18 @@ export default function ApprovalsPage() {
             <h2 className="font-semibold text-gray-900 capitalize">
               {activeView} Event Requests
             </h2>
-            <span className="text-sm text-gray-500">{displayedEvents.length} items</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">{displayedEvents.length} items</span>
+              {displayedEvents.length > 0 && (
+                <button
+                  onClick={exportToCSV}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </button>
+              )}
+            </div>
           </div>
 
           {displayedEvents.length === 0 ? (

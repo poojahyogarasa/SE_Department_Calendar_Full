@@ -11,7 +11,7 @@ const app = express();
 // 🔐 Secure CORS Configuration
 // ===============================
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
 
@@ -33,6 +33,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const todoRoutes = require('./routes/todoRoutes');
+const auditRoutes = require('./routes/auditRoutes');
 
 // ===============================
 // 🚀 ROUTES REGISTER
@@ -47,6 +48,7 @@ app.use('/api/todos', todoRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/audit', auditRoutes);
 
 // ===============================
 // 🏠 Root Route

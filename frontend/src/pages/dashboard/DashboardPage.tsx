@@ -1,17 +1,21 @@
+import { useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useEventStore } from '../../stores/useEventStore';
 import { canApproveEvents } from '../../utils/permissions';
+import { getInboxNotifications } from '../../utils/storage';
 import { format, isToday, isThisWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Download } from 'lucide-react';
+import { Calendar, Clock, MapPin, Download, BellOff } from 'lucide-react';
 import type { Event } from '../../types';
 
 import InstructorDashboard from '../../components/dashboard/InstructorDashboard';
 import TODashboard from '../../components/dashboard/TODashboard';
+import EventModal from '../../components/modals/EventModal';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { events, calendars } = useEventStore();
+  const [showEventModal, setShowEventModal] = useState(false);
 
   // ── Role-specific views ──────────────────────────────
   if (user?.role === 'TECHNICAL_OFFICER') {
@@ -19,7 +23,14 @@ export default function DashboardPage() {
   }
 
   if (user?.role === 'INSTRUCTOR' || user?.role === 'LECTURER') {
-    return <InstructorDashboard />;
+    return (
+      <>
+        <InstructorDashboard onCreateEvent={() => setShowEventModal(true)} />
+        {showEventModal && (
+          <EventModal isOpen={showEventModal} onClose={() => setShowEventModal(false)} />
+        )}
+      </>
+    );
   }
 
   // ── Generic dashboard (STUDENT, HOD, ADMIN) ──────────
@@ -34,14 +45,7 @@ export default function DashboardPage() {
     })
     .slice(0, 5);
 
-  // BUG_032: Sync unread state with localStorage so Dashboard matches Notifications page
-  const getReadIds = (): string[] => { try { return JSON.parse(localStorage.getItem('notifications_read_ids') || '[]'); } catch { return []; } };
-  const _readIds = getReadIds();
-  const mockNotifications = [
-    { id: '1', title: 'New Grade Posted: COMP301',    description: 'Your final grade for Operating Systems has been posted.', time: '5 minutes ago' },
-    { id: '2', title: 'Software Update Available',    description: 'Important security updates for academic software suite.', time: '1 hour ago'    },
-    { id: '3', title: 'Upcoming Holiday: Labour Day', description: 'The university will be closed on September 2nd.',          time: 'Yesterday'    },
-  ].map(n => ({ ...n, unread: !_readIds.includes(n.id) }));
+  const inboxNotifications = user?.id ? getInboxNotifications(user.id).slice(0, 3) : [];
 
   // BUG_008: Export events to CSV
   const handleExport = () => {
@@ -202,19 +206,29 @@ export default function DashboardPage() {
         {/* Notifications */}
         <div className="lg:col-span-1">
           <div className="card p-5">
-            <h2 className="font-semibold text-gray-900 mb-4">Notifications</h2>
-            <div className="space-y-3">
-              {mockNotifications.map(notification => (
-                <div
-                  key={notification.id}
-                  className={`p-3 rounded-lg border ${notification.unread ? 'border-primary/30 bg-primary/5' : 'border-gray-200'}`}
-                >
-                  <h3 className="text-sm font-medium text-gray-900">{notification.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{notification.description}</p>
-                  <p className="text-xs text-gray-400 mt-2">{notification.time}</p>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-900">Notifications</h2>
+              <Link to="/notifications" className="text-sm text-primary hover:text-primary-600">View all</Link>
             </div>
+            {inboxNotifications.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <BellOff className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <p className="text-sm">No notifications yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {inboxNotifications.map(n => (
+                  <div
+                    key={n.id}
+                    className={`p-3 rounded-lg border ${n.read ? 'border-gray-200' : 'border-primary/30 bg-primary/5'}`}
+                  >
+                    <h3 className="text-sm font-medium text-gray-900">{n.title}</h3>
+                    <p className="text-sm text-gray-500 mt-1">{n.description}</p>
+                    <p className="text-xs text-gray-400 mt-2">{n.time}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

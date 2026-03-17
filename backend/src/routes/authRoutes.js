@@ -5,6 +5,7 @@ const authController = require('../controllers/authController');
 const { authLimiter } = require('../middlewares/rateLimiter');
 const { body } = require('express-validator');
 const { validate } = require('../middlewares/validationMiddleware');
+const { verifyToken } = require('../middlewares/authMiddleware');
 
 
 // ===============================
@@ -24,8 +25,8 @@ router.post(
       .withMessage('Valid email is required'),
 
     body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters long')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters long')
   ],
   validate,
   authController.activateAccount
@@ -100,12 +101,52 @@ router.post(
       .withMessage('Valid email is required'),
 
     body('newPassword')
-      .isLength({ min: 6 })
-      .withMessage('New password must be at least 6 characters long')
+      .isLength({ min: 8 })
+      .withMessage('New password must be at least 8 characters long')
   ],
   validate,
   authController.resetPassword
 );
+
+
+// ===============================
+// 🔹 Update Profile (H5)
+// ===============================
+router.put(
+  '/profile',
+  verifyToken,
+  [
+    body('first_name').notEmpty().withMessage('First name is required'),
+    body('last_name').notEmpty().withMessage('Last name is required'),
+  ],
+  validate,
+  authController.updateProfile
+);
+
+
+// ===============================
+// 🔹 Get Users by Role(s)
+// Used by frontend to resolve user IDs for inbox notifications
+// ?roles=STUDENT,TECHNICAL_OFFICER,INSTRUCTOR,HOD  (comma-separated)
+// ===============================
+const db = require('../config/db');
+router.get('/users', verifyToken, (req, res) => {
+  const roles = req.query.roles
+    ? req.query.roles.split(',').map(r => r.trim().toUpperCase())
+    : [];
+  if (roles.length === 0) {
+    return res.json([]);
+  }
+  const placeholders = roles.map(() => '?').join(',');
+  db.query(
+    `SELECT id, CONCAT(first_name, ' ', last_name) AS name, email, role FROM users WHERE role IN (${placeholders})`,
+    roles,
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(results);
+    }
+  );
+});
 
 
 module.exports = router;
