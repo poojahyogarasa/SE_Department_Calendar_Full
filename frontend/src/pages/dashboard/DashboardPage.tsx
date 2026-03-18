@@ -34,11 +34,13 @@ export default function DashboardPage() {
   }
 
   // ── Generic dashboard (STUDENT, HOD, ADMIN) ──────────
-  const todayEvents = events
+  const approvedEvents = events.filter(e => e.status === 'APPROVED' || e.status === undefined);
+
+  const todayEvents = approvedEvents
     .filter(event => isToday(new Date(event.start)))
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
-  const upcomingEvents = events
+  const upcomingEvents = approvedEvents
     .filter(event => {
       const eventDate = new Date(event.start);
       return isThisWeek(eventDate) && !isToday(eventDate);

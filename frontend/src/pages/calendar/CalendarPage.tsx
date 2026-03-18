@@ -16,7 +16,7 @@ import { useCalendarStore } from '../../stores/useCalendarStore';
 import { useEventStore } from '../../stores/useEventStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
-import { getEventPermissions, getEventDisplayText, canCreateEvent, canApproveEvents } from '../../utils/permissions';
+import { getEventPermissions, getEventDisplayText, canCreateEvent } from '../../utils/permissions';
 import MiniCalendar from '../../components/calendar/MiniCalendar';
 import DayView from '../../components/calendar/DayView';
 import WeekView from '../../components/calendar/WeekView';
@@ -49,7 +49,6 @@ export default function CalendarPage() {
    * - BUSY / STAFF_EVENT events have their title/description/location masked.
    */
   const visibleEvents = useMemo(() => {
-    const canApprove = canApproveEvents(user);
     return events.flatMap((event) => {
       const calendar = calendars.find(c => c.id === event.calendarId);
       if (!calendar) return [];
@@ -57,11 +56,10 @@ export default function CalendarPage() {
       const perms = getEventPermissions(event, user, calendar);
       if (!perms.canView) return [];
 
-      // Hide REJECTED events from the calendar entirely
-      if (event.status === 'REJECTED') return [];
-
-      // Hide PENDING events unless: user can approve (HOD/ADMIN) OR user is the creator
-      if (event.status === 'PENDING' && !canApprove && event.createdBy !== user?.id) return [];
+      // Only APPROVED (or no-status) events appear on the calendar.
+      // PENDING → Approvals page only. REJECTED → hidden everywhere.
+      // ADMIN/HOD created events have no status (undefined) and show immediately.
+      if (event.status === 'PENDING' || event.status === 'REJECTED') return [];
 
       if (perms.viewMode === 'FULL') return [event];
 
