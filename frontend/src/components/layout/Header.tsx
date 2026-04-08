@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Calendar,
   Bell,
@@ -11,17 +11,40 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { getInboxNotifications } from '../../utils/storage';
 
 interface HeaderProps {
   onNewEvent?: () => void;
 }
 
+function getUnreadCount(userId?: string): number {
+  try {
+    return userId ? getInboxNotifications(userId).filter(n => !n.read).length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default function Header({ onNewEvent }: HeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [unreadCount, setUnreadCount] = useState(() => getUnreadCount(user?.id));
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Re-compute unread count whenever route changes (e.g. returning from /notifications)
+  useEffect(() => {
+    setUnreadCount(getUnreadCount(user?.id));
+  }, [location.pathname, user?.id]);
+
+  // Also update in real-time via storage events (inbox notification written in same tab)
+  useEffect(() => {
+    const handleStorage = () => setUnreadCount(getUnreadCount(user?.id));
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [user?.id]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -56,14 +79,14 @@ export default function Header({ onNewEvent }: HeaderProps) {
   /** Role badge colour */
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'ADMIN':               return 'bg-red-100 text-red-700 border border-red-200';
-      case 'HOD':  return 'bg-purple-100 text-purple-700 border border-purple-200';
-      case 'LECTURER':            return 'bg-blue-100 text-blue-700 border border-blue-200';
-      case 'INSTRUCTOR':          return 'bg-cyan-100 text-cyan-700 border border-cyan-200';
-      case 'TECHNICAL_OFFICER':   return 'bg-orange-100 text-orange-700 border border-orange-200';
-      case 'STAFF':               return 'bg-blue-100 text-blue-700 border border-blue-200';
+      case 'ADMIN':             return 'bg-red-100 text-red-700 border border-red-200';
+      case 'HOD':               return 'bg-purple-100 text-purple-700 border border-purple-200';
+      case 'LECTURER':          return 'bg-blue-100 text-blue-700 border border-blue-200';
+      case 'INSTRUCTOR':        return 'bg-cyan-100 text-cyan-700 border border-cyan-200';
+      case 'TECHNICAL_OFFICER': return 'bg-orange-100 text-orange-700 border border-orange-200';
+      case 'STAFF':             return 'bg-blue-100 text-blue-700 border border-blue-200';
       case 'STUDENT':
-      default:                    return 'bg-green-100 text-green-700 border border-green-200';
+      default:                  return 'bg-green-100 text-green-700 border border-green-200';
     }
   };
 
@@ -104,17 +127,16 @@ export default function Header({ onNewEvent }: HeaderProps) {
           </button>
         )}
 
-        {/* Notifications — BUG_021: dynamic unread count from localStorage */}
-        <Link to="/notifications" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        {/* Notifications bell with reactive unread count */}
+        <Link
+          to="/notifications"
+          className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          onClick={() => setTimeout(() => setUnreadCount(getUnreadCount()), 100)}
+        >
           <Bell className="w-5 h-5 text-gray-600" />
-          {(() => {
-            try {
-              const allIds = ['1', '2', '3', '4'];
-              const readIds: string[] = JSON.parse(localStorage.getItem('notifications_read_ids') || '[]');
-              const unread = allIds.filter(id => !readIds.includes(id)).length;
-              return unread > 0 ? <span className="notification-dot">{unread}</span> : null;
-            } catch { return null; }
-          })()}
+          {unreadCount > 0 && (
+            <span className="notification-dot">{unreadCount}</span>
+          )}
         </Link>
 
         {/* Settings */}
@@ -128,7 +150,6 @@ export default function Header({ onNewEvent }: HeaderProps) {
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            {/* BUG_025: show full initials to match Settings header */}
             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
               <span className="text-primary font-medium text-sm">
                 {user?.name

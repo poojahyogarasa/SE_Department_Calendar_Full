@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,7 +12,7 @@ const api = axios.create({
 // Request interceptor to add token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -21,38 +21,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling
+// Response interceptor — redirect to login on 401
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    // If 401 and not already retried, try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
-
-          localStorage.setItem('access_token', data.access_token);
-          localStorage.setItem('refresh_token', data.refresh_token);
-
-          originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
-        }
-      }
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
     }
-
     return Promise.reject(error);
   }
 );
@@ -61,84 +38,85 @@ export const authAPI = {
   login: (credentials: { email: string; password: string }) =>
     api.post('/auth/login', credentials),
 
-  register: (data: any) =>
-    api.post('/auth/register', data),
+  activate: (data: { email: string; password: string; first_name?: string; last_name?: string }) =>
+    api.post('/auth/activate', data),
 
-  logout: () =>
-    api.post('/auth/logout'),
-
-  getProfile: () =>
-    api.post('/auth/me'),
-};
-
-export const calendarsAPI = {
-  getAll: () =>
-    api.get('/calendars'),
-
-  getOne: (id: string) =>
-    api.get(`/calendars/${id}`),
-
-  create: (data: any) =>
-    api.post('/calendars', data),
-
-  update: (id: string, data: any) =>
-    api.patch(`/calendars/${id}`, data),
-
-  delete: (id: string) =>
-    api.delete(`/calendars/${id}`),
-
-  subscribe: (id: string) =>
-    api.post(`/calendars/${id}/subscribe`),
-
-  unsubscribe: (id: string) =>
-    api.post(`/calendars/${id}/unsubscribe`),
-
-  getSubscriptions: () =>
-    api.get('/calendars/subscriptions'),
+  updateProfile: (data: { first_name: string; last_name: string; department?: string }) =>
+    api.put('/auth/profile', data),
 };
 
 export const eventsAPI = {
-  getAll: (params?: any) =>
+  getAll: (params?: Record<string, unknown>) =>
     api.get('/events', { params }),
 
   getOne: (id: string) =>
     api.get(`/events/${id}`),
 
-  create: (data: any) =>
+  create: (data: Record<string, unknown>) =>
     api.post('/events', data),
 
-  update: (id: string, data: any) =>
-    api.patch(`/events/${id}`, data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.put(`/events/${id}`, data),
 
   delete: (id: string) =>
     api.delete(`/events/${id}`),
 };
 
-export const resourcesAPI = {
+export const hodAPI = {
+  getPendingEvents: () =>
+    api.get('/hod/pending-events'),
+
+  approveEvent: (eventId: string) =>
+    api.put(`/hod/approve/${eventId}`),
+
+  rejectEvent: (eventId: string, reason: string) =>
+    api.put(`/hod/reject/${eventId}`, { reason }),
+};
+
+export const notificationsAPI = {
   getAll: () =>
-    api.get('/resources'),
+    api.get('/notifications'),
 
-  getOne: (id: string) =>
-    api.get(`/resources/${id}`),
+  getUnreadCount: () =>
+    api.get('/notifications/count'),
 
-  checkAvailability: (id: string, start: string, end: string, excludeEventId?: string) =>
-    api.get(`/resources/${id}/availability`, {
-      params: { start, end, excludeEventId },
-    }),
+  markAsRead: (id: string) =>
+    api.patch(`/notifications/${id}/read`),
+
+  markAllAsRead: () =>
+    api.patch('/notifications/read-all'),
+
+  deleteNotification: (id: string) =>
+    api.delete(`/notifications/${id}`),
+};
+
+export const todosAPI = {
+  getAll: () =>
+    api.get('/todos'),
+
+  create: (data: Record<string, unknown>) =>
+    api.post('/todos', data),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    api.put(`/todos/${id}`, data),
+
+  toggle: (id: string) =>
+    api.patch(`/todos/${id}/toggle`),
+
+  delete: (id: string) =>
+    api.delete(`/todos/${id}`),
+};
+
+export const auditAPI = {
+  log: (data: Record<string, unknown>) =>
+    api.post('/audit', data),
 };
 
 export const usersAPI = {
-  getAll: (role?: string) =>
-    api.get('/users', { params: { role } }),
-
-  getOne: (id: string) =>
-    api.get(`/users/${id}`),
-
-  update: (id: string, data: any) =>
-    api.patch(`/users/${id}`, data),
-
-  delete: (id: string) =>
-    api.delete(`/users/${id}`),
+  getByRoles: (roles: string[]) =>
+    api.get<{ id: number; name: string; email: string; role: string }[]>(
+      `/auth/users?roles=${roles.join(',')}`
+    ),
 };
 
 export default api;

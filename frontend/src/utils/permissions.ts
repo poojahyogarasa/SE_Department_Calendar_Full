@@ -115,33 +115,17 @@ export const getEventPermissions = (
 /**
  * Checks if user can create events in a calendar
  */
-export const canCreateEvent = (user: User | null, calendar: Calendar): boolean => {
+export const canCreateEvent = (user: User | null, _calendar: Calendar): boolean => {
   if (!user) return false;
-
-  if (user.role === 'ADMIN' || user.role === 'HOD') return true;
-
-  if (
-    (user.role === 'LECTURER' || user.role === 'INSTRUCTOR') &&
-    calendar.managers.includes(user.id)
-  ) return true;
-
-  return false;
+  return ['ADMIN', 'HOD', 'LECTURER', 'INSTRUCTOR'].includes(user.role);
 };
 
 /**
  * Checks if user can manage a calendar
  */
-export const canManageCalendar = (user: User | null, calendar: Calendar): boolean => {
+export const canManageCalendar = (user: User | null, _calendar: Calendar): boolean => {
   if (!user) return false;
-
-  if (user.role === 'ADMIN' || user.role === 'HOD') return true;
-
-  if (
-    (user.role === 'LECTURER' || user.role === 'INSTRUCTOR') &&
-    calendar.managers.includes(user.id)
-  ) return true;
-
-  return false;
+  return user.role === 'ADMIN' || user.role === 'HOD';
 };
 
 /**

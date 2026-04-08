@@ -11,6 +11,7 @@ import {
   saveAuditLogs,
 } from '../utils/storage';
 import { areIntervalsOverlapping } from 'date-fns';
+import { auditAPI } from '../services/api';
 
 export const useEventStore = create<EventState>((set, get) => ({
   events: getStoredEvents(),
@@ -253,5 +254,17 @@ export const useEventStore = create<EventState>((set, get) => ({
     const auditLogs = [newLog, ...get().auditLogs];
     saveAuditLogs(auditLogs);
     set({ auditLogs });
+
+    // L2: Persist audit log to backend (fire-and-forget)
+    auditAPI.log({
+      actorId: logData.actorId,
+      actorName: logData.actorName,
+      action: logData.action,
+      entityType: logData.entityType,
+      entityId: logData.entityId,
+      entityName: logData.entityName,
+      diffSummary: logData.diffSummary,
+      details: logData.details,
+    }).catch(() => {});
   },
 }));

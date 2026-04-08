@@ -130,6 +130,28 @@ exports.login = (req, res) => {
 
 
 // =======================
+// 🔐 UPDATE PROFILE (H5)
+// =======================
+exports.updateProfile = (req, res) => {
+  const { first_name, last_name, department } = req.body;
+  const userId = req.user.id;
+
+  if (!first_name || !last_name) {
+    return res.status(400).json({ message: 'First name and last name are required' });
+  }
+
+  db.query(
+    'UPDATE users SET first_name=?, last_name=?, department=? WHERE id=?',
+    [first_name.trim(), last_name.trim(), department ? department.trim() : null, userId],
+    (err) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      res.json({ message: 'Profile updated successfully' });
+    }
+  );
+};
+
+
+// =======================
 // 🔐 FORGOT PASSWORD
 // =======================
 exports.forgotPassword = (req, res) => {

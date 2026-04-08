@@ -45,7 +45,7 @@ const deserialize = <T>(data: string): T => {
 };
 
 // Bump this version whenever the mock data schema changes to force re-initialisation
-const DATA_VERSION = '2';
+const DATA_VERSION = '3';
 
 /**
  * Initialize storage with mock data on first run (or after a version bump)
@@ -54,14 +54,12 @@ export const initializeStorage = (): void => {
   const storedVersion = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
 
   if (storedVersion !== DATA_VERSION) {
-    // Clear old data and re-seed with latest mock data
+    // Re-seed mock data but preserve the active user session
     localStorage.setItem(STORAGE_KEYS.EVENTS, serialize(mockEvents));
     localStorage.setItem(STORAGE_KEYS.CALENDARS, serialize(mockCalendars));
     localStorage.setItem(STORAGE_KEYS.USERS, serialize(mockUsers));
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, serialize(mockAuditLogs));
     localStorage.setItem(STORAGE_KEYS.RESOURCES, serialize(mockResources));
-    // Clear session so stale role data doesn't persist
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     localStorage.setItem(STORAGE_KEYS.INITIALIZED, DATA_VERSION);
   }
 };
@@ -162,6 +160,39 @@ export const exportAllData = () => {
     auditLogs: getStoredAuditLogs(),
     resources: getStoredResources(),
   };
+};
+
+// Per-user notification inbox (approval/rejection notifications from HOD)
+export interface InboxNotification {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
+
+export const getInboxNotifications = (userId: string): InboxNotification[] => {
+  try {
+    const key = `notifications_inbox_${userId}`;
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  } catch { return []; }
+};
+
+export const saveInboxNotifications = (userId: string, items: InboxNotification[]): void => {
+  localStorage.setItem(`notifications_inbox_${userId}`, JSON.stringify(items));
+};
+
+export const addInboxNotification = (userId: string, notif: Omit<InboxNotification, 'id' | 'read'>): void => {
+  const existing = getInboxNotifications(userId);
+  const newNotif: InboxNotification = {
+    ...notif,
+    id: `inbox-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    read: false,
+  };
+  saveInboxNotifications(userId, [newNotif, ...existing]);
+  // Dispatch storage event so Header badge updates in the same tab
+  window.dispatchEvent(new Event('storage'));
 };
 
 // Tasks (per user)

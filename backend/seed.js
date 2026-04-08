@@ -9,12 +9,12 @@ const bcrypt = require('bcryptjs');
 const db = require('./src/config/db');
 
 const users = [
-  { first_name: 'Admin',  last_name: 'User',          email: 'admin@uoj.lk',         password: 'admin123',   role: 'ADMIN',             department: 'Computer Engineering' },
-  { first_name: 'Head',   last_name: 'Of Department',  email: 'hod@uoj.lk',           password: 'hod123',     role: 'HOD',               department: 'Computer Engineering' },
-  { first_name: 'Rajesh', last_name: 'Kumar',          email: 'rajesh@uoj.lk',        password: 'staff123',   role: 'LECTURER',          department: 'Computer Engineering' },
-  { first_name: 'Priya',  last_name: 'Silva',          email: 'priya@uoj.lk',         password: 'staff123',   role: 'INSTRUCTOR',        department: 'Computer Engineering' },
-  { first_name: 'Dinesh', last_name: 'Perera',         email: 'dinesh@uoj.lk',        password: 'to123',      role: 'TECHNICAL_OFFICER', department: 'Computer Engineering' },
-  { first_name: 'Arun',   last_name: 'Nair',           email: 'arun@student.uoj.lk',  password: 'student123', role: 'STUDENT',           department: 'Computer Engineering' },
+  { first_name: 'Salman',    last_name: 'Admin',    email: 'mmsalmanmmskk@gmail.com',  password: 'Admin@123', role: 'ADMIN',             department: 'Computer Engineering' },
+  { first_name: 'Pravar',    last_name: 'Sines',    email: 'Pravarsines@gmail.com',    password: 'hod@123',   role: 'HOD',               department: 'Computer Engineering' },
+  { first_name: 'Kisothana', last_name: 'Bala',     email: 'kisothanabala@gmail.com',  password: 'kiso@85',   role: 'LECTURER',          department: 'Computer Engineering' },
+  { first_name: 'Ajanthan',  last_name: 'WC',       email: 'ajanthanwc@gmail.com',     password: 'To@123',    role: 'TECHNICAL_OFFICER', department: 'Computer Engineering' },
+  { first_name: 'Pooja',     last_name: 'Yogarasa', email: 'poojayogarasa@gmail.com',  password: 'Stu@123',   role: 'STUDENT',           department: 'Computer Engineering' },
+  { first_name: 'Poojah',    last_name: 'Yogarasa', email: 'poojahyogarasa22@gmail.com', password: 'Stu@345', role: 'STUDENT',           department: 'Computer Engineering' },
 ];
 
 async function seed() {
@@ -22,15 +22,22 @@ async function seed() {
     const hash = await bcrypt.hash(u.password, 10);
     await new Promise((resolve, reject) => {
       db.query(
-        `INSERT IGNORE INTO users (first_name, last_name, email, password, role, department, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, 1)`,
+        `INSERT INTO users (first_name, last_name, email, password, role, department, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, 1)
+         ON DUPLICATE KEY UPDATE
+           first_name = VALUES(first_name),
+           last_name  = VALUES(last_name),
+           password   = VALUES(password),
+           role       = VALUES(role),
+           department = VALUES(department),
+           is_active  = 1`,
         [u.first_name, u.last_name, u.email, hash, u.role, u.department],
         (err, result) => {
           if (err) return reject(err);
-          if (result.affectedRows > 0) {
+          if (result.affectedRows === 1) {
             console.log(`✅ Inserted: ${u.email} (${u.role})`);
           } else {
-            console.log(`⚠️  Skipped (already exists): ${u.email}`);
+            console.log(`🔄 Updated:  ${u.email} (${u.role})`);
           }
           resolve();
         }

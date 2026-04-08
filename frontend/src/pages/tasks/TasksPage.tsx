@@ -13,7 +13,11 @@ import {
 import { format, isPast, isToday } from 'date-fns';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { getStoredTasks, saveTasks } from '../../utils/storage';
+import { todosAPI } from '../../services/api';
 import type { Task, TaskList, TaskPriority } from '../../types';
+
+const isBackendId = (id: string) => id.startsWith('backend-');
+const extractBackendId = (id: string) => id.replace('backend-', '');
 
 export default function TasksPage() {
   const { user } = useAuthStore();
@@ -30,7 +34,33 @@ export default function TasksPage() {
   const [editDueDate, setEditDueDate] = useState('');
   const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
 
-  // Persist whenever tasks change
+  // H7: Load todos from backend on mount, merge with local tasks
+  useEffect(() => {
+    todosAPI.getAll()
+      .then((res: { data: any[] }) => {
+        const backendTasks: Task[] = res.data.map((t: any) => ({
+          id: `backend-${t.todo_id}`,
+          userId: String(t.user_id),
+          title: t.title,
+          completed: t.is_done === 1 || t.is_done === true,
+          priority: 'medium' as TaskPriority,
+          list: 'tasks' as TaskList,
+          createdAt: new Date(t.created_at),
+          dueDate: t.due_date ? new Date(t.due_date) : undefined,
+        }));
+
+        setTasks(prev => {
+          // Keep local-only tasks (not backend-prefixed), merge with backend tasks
+          const localOnly = prev.filter(t => !isBackendId(t.id));
+          return [...backendTasks, ...localOnly];
+        });
+      })
+      .catch(() => {
+        // Backend unavailable — keep localStorage tasks
+      });
+  }, [userId]);
+
+  // Persist to localStorage whenever tasks change
   useEffect(() => {
     saveTasks(userId, tasks);
   }, [tasks, userId]);
@@ -56,10 +86,16 @@ export default function TasksPage() {
 
   const toggleTask = (taskId: string) => {
     setTasks(tasks.map(t => (t.id === taskId ? { ...t, completed: !t.completed } : t)));
+    if (isBackendId(taskId)) {
+      todosAPI.toggle(extractBackendId(taskId)).catch(() => {});
+    }
   };
 
   const deleteTask = (taskId: string) => {
     setTasks(tasks.filter(t => t.id !== taskId));
+    if (isBackendId(taskId)) {
+      todosAPI.delete(extractBackendId(taskId)).catch(() => {});
+    }
   };
 
   const addTask = () => {
@@ -75,6 +111,9 @@ export default function TasksPage() {
     };
     setTasks([...tasks, newTask]);
     setNewTaskTitle('');
+
+    // Fire-and-forget to backend
+    todosAPI.create({ title: newTask.title }).catch(() => {});
   };
 
   const startEdit = (task: Task) => {
@@ -92,6 +131,13 @@ export default function TasksPage() {
         : t
     ));
     setEditingId(null);
+
+    if (isBackendId(taskId)) {
+      todosAPI.update(extractBackendId(taskId), {
+        title: editTitle.trim(),
+        due_date: editDueDate || null,
+      }).catch(() => {});
+    }
   };
 
   const cancelEdit = () => { setEditingId(null); };

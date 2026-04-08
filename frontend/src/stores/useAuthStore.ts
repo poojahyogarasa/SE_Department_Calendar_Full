@@ -30,8 +30,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user, isAuthenticated: true });
 
       return true;
-    } catch {
-      return false;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        throw new Error(err.response?.data?.message || 'Login failed. Please try again.');
+      }
+      throw new Error('Unable to connect. Please check your connection.');
     }
   },
 
